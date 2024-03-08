@@ -9,7 +9,7 @@ from fastapi import APIRouter, Request, status
 from fastapi.responses import JSONResponse, RedirectResponse
 from utils.database_handler import create_user, get_user_by_id
 from utils.jwt_handler import decode_jwt, signJWT
-from utils.spotify_handler import get_spotify_details
+from utils.spotify_handler import get_spotify_details, update_user_genre
 
 load_dotenv()
 
@@ -49,7 +49,6 @@ async def callback(request: Request, code: str):
             },
         ) as resp:
             dat = await resp.json()
-            print(dat)
     try:
         user_data = await get_spotify_details(dat["access_token"])
 
@@ -70,6 +69,7 @@ async def callback(request: Request, code: str):
         user["_id"],
     )
     resp.set_cookie(key="session", value=jwt_token["access_token"])
+    await update_user_genre(user["_id"])
     return resp
 
 

@@ -6,7 +6,13 @@ import aiohttp
 import six
 from dotenv import load_dotenv
 
-from .database_handler import get_user_by_access_token, get_user_by_id, update_session
+from .database_handler import (
+    get_user_by_access_token,
+    get_user_by_id,
+    update_session,
+    get_users,
+    update_user,
+)
 
 load_dotenv()
 
@@ -39,7 +45,9 @@ def parse_items_json(items: dict, type: str = "recent"):
     return [
         {
             "name": item["name"] if type != "recent" else item["track"]["name"],
-            "uri": item["uri"] if type != "recent" else item["track"]["uri"],
+            "uri": (item["uri"] if type != "recent" else item["track"]["uri"]).split(
+                ":"
+            )[2],
             "album": {
                 "name": (
                     item["album"]["name"]
@@ -50,7 +58,7 @@ def parse_items_json(items: dict, type: str = "recent"):
                     item["album"]["uri"]
                     if type != "recent"
                     else item["track"]["album"]["uri"]
-                ),
+                ).split(":")[2],
                 "image": (
                     item["album"]["images"][0]["url"]
                     if type != "recent"
@@ -60,7 +68,7 @@ def parse_items_json(items: dict, type: str = "recent"):
             "artists": [
                 {
                     "name": artist["name"],
-                    "uri": artist["uri"],
+                    "uri": artist["uri"].split(":")[2],
                 }
                 for artist in (
                     item["artists"] if type != "recent" else item["track"]["artists"]
@@ -111,12 +119,13 @@ async def refresh_token(userid: str):
     ) as resp:
         dat = await resp.json()
 
-    dat["refresh_token"] = refresh_token
     session_data = {}
     session_data["access_token"] = dat["access_token"]
     session_data["expires_in"] = dat["expires_in"]
     session_data["scope"] = dat["scope"]
     session_data["token_type"] = dat["token_type"]
+    session_data["refresh_token"] = refresh_token
+
     e = await update_session(userid, session_data)
     if e:
         return session_data
@@ -143,7 +152,7 @@ async def get_currently_playing(access_token: str) -> dict:
             "is_playing": resp_json["is_playing"],
             "progress_ms": resp_json["progress_ms"],
             "name": resp_json["item"]["name"],
-            "uri": resp_json["item"]["uri"],
+            "uri": (resp_json["item"]["uri"]).split(":")[2],
             "album": {
                 "name": resp_json["item"]["album"]["name"],
                 "uri": resp_json["item"]["album"]["uri"],
@@ -216,3 +225,94 @@ async def play_song(access_token: str, uri: str, position_ms: int = 0):
             except Exception:
                 return traceback.format_exc()
         return resp.status
+
+
+async def get_several_tracks(access_token: str, uris: list):
+    headers = get_headers(access_token)
+    async with session.get(
+        f"https://api.spotify.com/v1/tracks?ids={','.join(uris)}", headers=headers
+    ) as resp:
+        if resp.status == 401:
+            try:
+                user = await get_user_by_access_token(access_token)
+                userid = user["_id"]
+                spotify_auth_data = await refresh_token(userid)
+                access_token = spotify_auth_data["access_token"]
+                return await get_several_tracks(access_token, uris)
+            except Exception:
+                return traceback.format_exc()
+        return await resp.json()
+
+
+async def get_top_artist_genres(access_token: str):
+    headers = get_headers(access_token)
+    async with session.get(
+        f"https://api.spotify.com/v1/me/top/artists", headers=headers
+    ) as resp:
+        if resp.status == 401:
+            try:
+                user = await get_user_by_access_token(access_token)
+                userid = user["_id"]
+                spotify_auth_data = await refresh_token(userid)
+                access_token = spotify_auth_data["access_token"]
+                return await get_top_artist_genres(access_token)
+            except Exception:
+                return traceback.format_exc()
+
+        genres = {}
+        for artist in (await resp.json())["items"]:
+            for genre in artist["genres"]:
+                if genre in genres:
+                    genres[genre] += 1
+                else:
+                    genres[genre] = 1
+
+        return sorted(list(genres.keys()), key=lambda x: genres[x], reverse=True)
+
+
+async def update_user_genre(user: str = None, all: bool = True):
+
+    if all:
+        users = await get_users()
+    else:
+        users = [user]
+
+    async for user in users:
+        user_token = user["spotify_session_data"]["access_token"]
+        resp = await get_top_artist_genres(user_token)
+        user["top_genres"] = resp[:5]
+        await update_user(user["_id"], user)
+
+
+async def get_song(access_token: str, uri: str):
+    headers = get_headers(access_token)
+    async with session.get(
+        f"https://api.spotify.com/v1/tracks/{uri}", headers=headers
+    ) as resp:
+        if resp.status == 401:
+            try:
+                user = await get_user_by_access_token(access_token)
+                userid = user["_id"]
+                spotify_auth_data = await refresh_token(userid)
+                access_token = spotify_auth_data["access_token"]
+                return await get_song(access_token, uri)
+            except Exception:
+                return traceback.format_exc()
+        return await resp.json()
+
+
+async def get_several_artists(access_token: str, uris: list):
+    headers = get_headers(access_token)
+    async with session.get(
+        f"https://api.spotify.com/v1/artists?ids={','.join(uris)}", headers=headers
+    ) as resp:
+        if resp.status == 401:
+            try:
+                user = await get_user_by_access_token(access_token)
+                userid = user["_id"]
+                spotify_auth_data = await refresh_token(userid)
+                access_token = spotify_auth_data["access_token"]
+                return await get_several_artists(access_token, uris)
+            except Exception:
+                return traceback.format_exc()
+        return await resp.json()

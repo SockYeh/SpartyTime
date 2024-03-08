@@ -1,5 +1,4 @@
 import time
-import os
 from typing import Optional
 
 from bson.objectid import ObjectId
@@ -17,11 +16,6 @@ from utils.database_handler import (
 from utils.jwt_handler import decode_jwt
 from utils.session_manager import validate_session
 
-load_dotenv()
-
-SPOTIFY_CLIENT_ID = os.getenv("SPOTIFY_CLIENT_ID")
-SPOTIFY_CLIENT_SECRET = os.getenv("SPOTIFY_CLIENT_SECRET")
-REDIRECT_URL = os.getenv("REDIRECT_URL")
 
 router = APIRouter(
     prefix="/parties", tags=["parties"], dependencies=[Depends(validate_session)]
@@ -70,7 +64,7 @@ async def create_party(request: Request, payload: Party):
                 else "This is a party."
             ),
             "start": round(time.time()),
-            "users": payload.users + [ObjectId(userid)],
+            "users": payload.users,
             "owner": userid,
             "type": payload.type,
         }
@@ -139,6 +133,16 @@ async def add_user_to_party(request: Request, party_id: str):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"Invalid user id.",
+        )
+    party = await get_party_instance(party_id)
+    if not party:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail=f"Party not found."
+        )
+    if party["party_info"]["type"] == "private":
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=f"Unauthorized. Party is private.",
         )
 
     e = await update_party_instance(party_id, {"party_info.users": _id}, "$addToSet")

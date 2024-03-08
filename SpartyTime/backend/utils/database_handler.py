@@ -41,6 +41,10 @@ async def create_user_db():
                     "bsonType": "string",
                     "description": "must be a string. Spotify username of the user",
                 },
+                "genres": {
+                    "bsonType": "array",
+                    "description": "must be an array. List of genres for the user",
+                },
                 "spotify_id": {
                     "bsonType": "string",
                     "description": "must be a string. Spotify ID of the user",
@@ -78,7 +82,7 @@ async def create_party_db():
     party_validator = {
         "$jsonSchema": {
             "bsonType": "object",
-            "required": ["party_info", "party_data"],
+            "required": ["party_info"],
             "properties": {
                 "party_info": {
                     "bsonType": "object",
@@ -102,6 +106,10 @@ async def create_party_db():
                                 "bsonType": "string",
                                 "description": "must be a string. Description of the party",
                             },
+                            "genres": {
+                                "bsonType": "array",
+                                "description": "must be an array. List of genres for the party",
+                            },
                             "start": {
                                 "bsonType": "int",
                                 "description": "must be an int. Start time (in ms)",
@@ -118,7 +126,7 @@ async def create_party_db():
                             "type": {
                                 "bsonType": "string",
                                 "description": "must be a string. Type of the party",
-                                "enum": ["public", "unlisted"],
+                                "enum": ["public", "unlisted", "private"],
                             },
                         },
                     },
@@ -203,6 +211,17 @@ async def update_session(user_id: str, session_data: dict):
         return False
 
 
+async def update_user(user_id: str, user_data: dict):
+    try:
+        e = await users_db.auth_details.update_one(
+            {"_id": convert_to_bson_id(user_id)},
+            {"$set": user_data},
+        )
+        return True
+    except Exception:
+        return False
+
+
 async def get_user_by_access_token(access_token: str):
     query = {"spotify_session_data.access_token": access_token}
     op = await users_db.auth_details.find_one(query)
@@ -268,11 +287,21 @@ async def delete_party_instance(party_id: str):
     return True
 
 
-async def get_parties():
-    op = parties_db.party_details.find()
+async def get_parties(filter_dict: dict = {}):
+    op = parties_db.party_details.find(filter_dict)
     return op
 
 
 async def delete_parties():
     await parties_db.party_details.delete_many({})
     return True
+
+
+async def get_users(filter_dict: dict = {}):
+    op = users_db.auth_details.find(filter_dict)
+    return op
+
+
+async def get_party(filter_dict: dict = {}):
+    op = parties_db.party_details.find_one(filter_dict)
+    return op
