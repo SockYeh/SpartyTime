@@ -1,13 +1,15 @@
 import time
 
-import jwt
-from decouple import config
+import jwt, os
+from dotenv import load_dotenv
 import pydantic
 from bson import ObjectId
 from bson.errors import InvalidId
 
-JWT_SECRET = config("secret")
-JWT_ALGORITHM = config("algorithm")
+load_dotenv()
+
+JWT_SECRET = os.environ["secret"]
+JWT_ALGORITHM = os.environ["algorithm"]
 
 
 class JWTExpired(Exception):
@@ -35,13 +37,13 @@ def token_response(token: str) -> dict:
 
 
 def signJWT(user_id: str) -> dict:
-    payload: JWTToken = JWTToken(user_id=user_id)
+    payload: dict = JWTToken(user_id=user_id).dict()
     token = jwt.encode(payload, JWT_SECRET, algorithm=JWT_ALGORITHM)
     return token_response(token)
 
 
 def decode_jwt(token: str) -> dict:
-    decoded_token: JWTToken = JWTToken(
+    decoded_token: dict = JWTToken(
         **jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
-    )
+    ).dict()
     return decoded_token
