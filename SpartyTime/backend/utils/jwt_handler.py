@@ -25,11 +25,13 @@ class JWTToken(pydantic.BaseModel):
     def check_user_id(cls, value):
         if not ObjectId.is_valid(value):
             raise InvalidId(f"{value} is not a valid ObjectId. ")
+        return value
 
     @pydantic.validator("expires", pre=True, always=True)
     def check_expiry(cls, value):
         if value < time.time():
             raise JWTExpired()
+        return value
 
 
 def token_response(token: str) -> dict:
