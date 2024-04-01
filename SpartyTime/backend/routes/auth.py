@@ -8,7 +8,6 @@ from dotenv import load_dotenv
 from fastapi import APIRouter, Request, status
 from fastapi.responses import JSONResponse, RedirectResponse
 from utils.database_handler import create_user, get_user_by_id
-from utils.jwt_handler import decode_jwt, signJWT
 from utils.spotify_handler import get_spotify_details, update_user_genre
 
 load_dotenv()
@@ -65,10 +64,7 @@ async def callback(request: Request, code: str):
 
     user = await get_user_by_id(user_data["id"], is_spotify_id=True)
 
-    jwt_token = signJWT(
-        str(user._id),
-    )
-    resp.set_cookie(key="session", value=jwt_token["access_token"])
+    request.session["user_id"] = str(user._id)
     await update_user_genre(str(user._id))
     return resp
 
@@ -76,9 +72,9 @@ async def callback(request: Request, code: str):
 @router.get("/me")
 async def me(request: Request):
     try:
-        jwt_token = request.cookies.get("session")
-        if jwt_token:
-            user_id = decode_jwt(jwt_token)["user_id"]
+        token = request.cookies.get("session")
+        if token:
+            user_id = request.session["user_id"]
             user = await get_user_by_id(user_id)
             access_token = user.spotify_session_data.access_token
             user_data = await get_spotify_details(access_token)
