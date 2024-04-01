@@ -34,10 +34,9 @@ async def convert_bsons_to_str(data: list) -> list:
 @router.get("/parties")
 async def get_all_parties(request: Request):
     parties = await get_parties()
-    parties_list = [PartyModel(**party) for party in parties]
 
     return JSONResponse(
-        content={"parties": await convert_bsons_to_str(parties_list)},
+        content={"parties": await convert_bsons_to_str(parties)},
         status_code=status.HTTP_200_OK,
     )
 
@@ -45,7 +44,6 @@ async def get_all_parties(request: Request):
 @router.get("/parties/{genre}")
 async def get_parties_by_genre(request: Request, genre: str):
     parties = await get_parties({"party_info.genres": genre})
-    parties = [PartyModel(**party) for party in parties]
 
     return JSONResponse(
         content={"parties": await convert_bsons_to_str(parties)},
@@ -80,7 +78,6 @@ async def match_genres(request: Request):
             {"$sort": {"intersection": -1}},
         ]
     )
-    parties = [PartyModel(**party) for party in parties]
     return JSONResponse(
         content={"parties": await convert_bsons_to_str(parties)},
         status_code=status.HTTP_200_OK,
