@@ -1,10 +1,12 @@
 import base64
+import pydantic
 import os
 import traceback
 
 import aiohttp
 import six
 from dotenv import load_dotenv
+from pydantic import BaseModel
 
 from .database_handler import (
     get_user_by_access_token,
@@ -12,22 +14,28 @@ from .database_handler import (
     update_session,
     get_users,
     update_user,
+    UserModel,
+    SpotifySessionModel,
 )
 
 load_dotenv()
 
-SPOTIFY_CLIENT_ID = os.getenv("SPOTIFY_CLIENT_ID")
-SPOTIFY_CLIENT_SECRET = os.getenv("SPOTIFY_CLIENT_SECRET")
-session = None
+SPOTIFY_CLIENT_ID = os.environ["SPOTIFY_CLIENT_ID"]
+SPOTIFY_CLIENT_SECRET = os.environ["SPOTIFY_CLIENT_SECRET"]
 
 
 async def create_session():
     global session
-    session = aiohttp.ClientSession()
+    session: aiohttp.ClientSession = aiohttp.ClientSession()
 
 
 async def close_session():
     await session.close()
+
+
+class SpotifyError(Exception):
+    def __init__(self, message: str):
+        super().__init__(message)
 
 
 def get_headers(access_token: str) -> dict:
@@ -37,49 +45,76 @@ def get_headers(access_token: str) -> dict:
     }
 
 
-def parse_items_json(items: dict, type: str = "recent"):
+class Artist(BaseModel):
+    name: str
+    uri: str
+
+
+class Album(BaseModel):
+    name: str
+    uri: str
+    image: str
+
+
+class ParsedItem(BaseModel):
+    name: str
+    uri: str
+    album: Album
+    artists: list[Artist]
+
+
+class CurrentlyPlaying(pydantic.BaseModel):
+    is_playing: bool
+    progress_ms: int
+    name: str
+    uri: str
+    album: Album
+    artists: list
+
+
+def parse_items_json(items: dict, type: str = "recent") -> list[ParsedItem]:
     parse_with = "items"
     if type == "queue":
         parse_with = "queue"
 
     return [
-        {
-            "name": item["name"] if type != "recent" else item["track"]["name"],
-            "uri": (item["uri"] if type != "recent" else item["track"]["uri"]).split(
-                ":"
-            )[2],
-            "album": {
-                "name": (
+        ParsedItem(
+            name=item["name"] if type != "recent" else item["track"]["name"],
+            uri=(item["uri"] if type != "recent" else item["track"]["uri"]).split(":")[
+                2
+            ],
+            album=Album(
+                name=(
                     item["album"]["name"]
                     if type != "recent"
                     else item["track"]["album"]["name"]
                 ),
-                "uri": (
+                uri=(
                     item["album"]["uri"]
                     if type != "recent"
                     else item["track"]["album"]["uri"]
                 ).split(":")[2],
-                "image": (
+                image=(
                     item["album"]["images"][0]["url"]
                     if type != "recent"
                     else item["track"]["album"]["images"][0]["url"]
                 ),
-            },
-            "artists": [
-                {
-                    "name": artist["name"],
-                    "uri": artist["uri"].split(":")[2],
-                }
+            ),
+            artists=[
+                Artist(
+                    name=artist["name"],
+                    uri=artist["uri"].split(":")[2],
+                )
                 for artist in (
                     item["artists"] if type != "recent" else item["track"]["artists"]
                 )
             ],
-        }
+        )
         for item in items[parse_with]
     ]
 
 
-async def get_spotify_details(access_token: str):
+async def get_spotify_details(access_token: str) -> dict:
     session = aiohttp.ClientSession()
 
     async with session.get(
@@ -89,18 +124,18 @@ async def get_spotify_details(access_token: str):
         if resp.status == 401:
             try:
                 user = await get_user_by_access_token(access_token)
-                userid = user["_id"]
+                userid = str(user._id)
                 spotify_auth_data = await refresh_token(userid)
                 access_token = spotify_auth_data["access_token"]
                 return await get_spotify_details(access_token)
             except Exception:
-                return traceback.format_exc()
+                raise SpotifyError(traceback.format_exc())
         return await resp.json()
 
 
-async def refresh_token(userid: str):
+async def refresh_token(userid: str) -> dict:
     userdata = await get_user_by_id(userid)
-    refresh_token = userdata["spotify_session_data"]["refresh_token"]
+    refresh_token = userdata.spotify_session_data.refresh_token
 
     auth_header = base64.b64encode(
         six.text_type(SPOTIFY_CLIENT_ID + ":" + SPOTIFY_CLIENT_SECRET).encode("ascii")
@@ -119,18 +154,13 @@ async def refresh_token(userid: str):
     ) as resp:
         dat = await resp.json()
 
-    session_data = {}
-    session_data["access_token"] = dat["access_token"]
-    session_data["expires_in"] = dat["expires_in"]
-    session_data["scope"] = dat["scope"]
-    session_data["token_type"] = dat["token_type"]
-    session_data["refresh_token"] = refresh_token
+    session_data: dict = SpotifySessionModel(**dat, refresh_token=refresh_token).dict()
 
     e = await update_session(userid, session_data)
     if e:
         return session_data
 
-    return {"error": e}
+    raise SpotifyError("Failed to update session data")
 
 
 async def get_currently_playing(access_token: str) -> dict:
@@ -141,34 +171,32 @@ async def get_currently_playing(access_token: str) -> dict:
         if resp.status == 401:
             try:
                 user = await get_user_by_access_token(access_token)
-                userid = user["_id"]
+                userid = str(user._id)
                 spotify_auth_data = await refresh_token(userid)
                 access_token = spotify_auth_data["access_token"]
                 return await get_currently_playing(access_token)
             except Exception:
-                return traceback.format_exc()
+                raise SpotifyError(traceback.format_exc())
         resp_json = await resp.json()
-        return {
-            "is_playing": resp_json["is_playing"],
-            "progress_ms": resp_json["progress_ms"],
-            "name": resp_json["item"]["name"],
-            "uri": (resp_json["item"]["uri"]).split(":")[2],
-            "album": {
-                "name": resp_json["item"]["album"]["name"],
-                "uri": resp_json["item"]["album"]["uri"],
-                "image": resp_json["item"]["album"]["images"][0]["url"],
-            },
-            "artists": [
-                {
-                    "name": artist["name"],
-                    "uri": artist["uri"],
-                }
+
+        return CurrentlyPlaying(
+            is_playing=resp_json["is_playing"],
+            progress_ms=resp_json["progress_ms"],
+            name=resp_json["item"]["name"],
+            uri=resp_json["item"]["uri"],
+            album=Album(
+                name=resp_json["item"]["album"]["name"],
+                uri=resp_json["item"]["album"]["uri"],
+                image=resp_json["item"]["album"]["images"][0]["url"],
+            ),
+            artists=[
+                Artist(name=artist["name"], uri=artist["uri"])
                 for artist in resp_json["item"]["artists"]
             ],
-        }
+        ).dict()
 
 
-async def get_recently_played(access_token: str, unix_timestamp: int = None):
+async def get_recently_played(access_token: str, unix_timestamp: int = 0) -> list:
     async with session.get(
         (
             f"https://api.spotify.com/v1/me/player/recently-played?limit=5&after={unix_timestamp}"
@@ -181,16 +209,16 @@ async def get_recently_played(access_token: str, unix_timestamp: int = None):
         if resp.status == 401:
             try:
                 user = await get_user_by_access_token(access_token)
-                userid = user["_id"]
+                userid = str(user._id)
                 spotify_auth_data = await refresh_token(userid)
                 access_token = spotify_auth_data["access_token"]
                 return await get_recently_played(access_token)
             except Exception:
-                return traceback.format_exc()
+                raise SpotifyError(traceback.format_exc())
         return parse_items_json(await resp.json())
 
 
-async def get_queue(access_token: str):
+async def get_queue(access_token: str) -> list:
     async with session.get(
         f"https://api.spotify.com/v1/me/player/queue?limit=5",
         headers=get_headers(access_token),
@@ -198,16 +226,16 @@ async def get_queue(access_token: str):
         if resp.status == 401:
             try:
                 user = await get_user_by_access_token(access_token)
-                userid = user["_id"]
+                userid = str(user._id)
                 spotify_auth_data = await refresh_token(userid)
                 access_token = spotify_auth_data["access_token"]
                 return await get_queue(access_token)
             except Exception:
-                return traceback.format_exc()
+                raise SpotifyError(traceback.format_exc())
         return parse_items_json(await resp.json(), "queue")
 
 
-async def play_song(access_token: str, uri: str, position_ms: int = 0):
+async def play_song(access_token: str, uri: str, position_ms: int = 0) -> int:
     headers = get_headers(access_token)
     headers["Content-Type"] = "application/json"
     async with session.put(
@@ -218,16 +246,16 @@ async def play_song(access_token: str, uri: str, position_ms: int = 0):
         if resp.status == 401:
             try:
                 user = await get_user_by_access_token(access_token)
-                userid = user["_id"]
+                userid = str(user._id)
                 spotify_auth_data = await refresh_token(userid)
                 access_token = spotify_auth_data["access_token"]
                 return await play_song(access_token, uri)
             except Exception:
-                return traceback.format_exc()
+                raise SpotifyError(traceback.format_exc())
         return resp.status
 
 
-async def get_several_tracks(access_token: str, uris: list):
+async def get_several_tracks(access_token: str, uris: list) -> dict:
     headers = get_headers(access_token)
     async with session.get(
         f"https://api.spotify.com/v1/tracks?ids={','.join(uris)}", headers=headers
@@ -235,16 +263,16 @@ async def get_several_tracks(access_token: str, uris: list):
         if resp.status == 401:
             try:
                 user = await get_user_by_access_token(access_token)
-                userid = user["_id"]
+                userid = str(user._id)
                 spotify_auth_data = await refresh_token(userid)
                 access_token = spotify_auth_data["access_token"]
                 return await get_several_tracks(access_token, uris)
             except Exception:
-                return traceback.format_exc()
+                raise SpotifyError(traceback.format_exc())
         return await resp.json()
 
 
-async def get_top_artist_genres(access_token: str):
+async def get_top_artist_genres(access_token: str) -> list:
     headers = get_headers(access_token)
     async with session.get(
         f"https://api.spotify.com/v1/me/top/artists", headers=headers
@@ -252,12 +280,12 @@ async def get_top_artist_genres(access_token: str):
         if resp.status == 401:
             try:
                 user = await get_user_by_access_token(access_token)
-                userid = user["_id"]
+                userid = str(user._id)
                 spotify_auth_data = await refresh_token(userid)
                 access_token = spotify_auth_data["access_token"]
                 return await get_top_artist_genres(access_token)
             except Exception:
-                return traceback.format_exc()
+                raise SpotifyError(traceback.format_exc())
 
         genres = {}
         for artist in (await resp.json())["items"]:
@@ -270,18 +298,18 @@ async def get_top_artist_genres(access_token: str):
         return sorted(list(genres.keys()), key=lambda x: genres[x], reverse=True)
 
 
-async def update_user_genre(user: str = None, all: bool = True):
+async def update_user_genre(user: str = "", all: bool = True) -> None:
 
     if all:
         users = await get_users()
     else:
-        users = [user]
+        users = [await get_user_by_id(user)]
 
-    async for user in users:
-        user_token = user["spotify_session_data"]["access_token"]
+    for user_ in users:
+        user_token = user_.spotify_session_data.access_token
         resp = await get_top_artist_genres(user_token)
-        user["top_genres"] = resp[:5]
-        await update_user(user["_id"], user)
+        user_.genres = resp[:5]
+        await update_user(str(user_._id), user_.dict())
 
 
 async def get_song(access_token: str, uri: str):
@@ -292,12 +320,12 @@ async def get_song(access_token: str, uri: str):
         if resp.status == 401:
             try:
                 user = await get_user_by_access_token(access_token)
-                userid = user["_id"]
+                userid = str(user._id)
                 spotify_auth_data = await refresh_token(userid)
                 access_token = spotify_auth_data["access_token"]
                 return await get_song(access_token, uri)
             except Exception:
-                return traceback.format_exc()
+                raise SpotifyError(traceback.format_exc())
         return await resp.json()
 
 
@@ -309,10 +337,10 @@ async def get_several_artists(access_token: str, uris: list):
         if resp.status == 401:
             try:
                 user = await get_user_by_access_token(access_token)
-                userid = user["_id"]
+                userid = str(user._id)
                 spotify_auth_data = await refresh_token(userid)
                 access_token = spotify_auth_data["access_token"]
                 return await get_several_artists(access_token, uris)
             except Exception:
-                return traceback.format_exc()
+                raise SpotifyError(traceback.format_exc())
         return await resp.json()
