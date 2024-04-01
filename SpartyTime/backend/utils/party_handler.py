@@ -1,27 +1,24 @@
+import time
 import traceback
+
+from fastapi_utils.tasks import repeat_every
 from utils.database_handler import (
-    get_party_instance,
-    update_party_instance,
+    PartyDataModel,
+    PartyModel,
     delete_party_instance,
     get_parties,
+    get_party_instance,
     get_user_by_id,
-    update_user,
     remove_party_member,
-    get_users,
-    PartyModel,
-    PartyDataModel,
+    update_party_instance,
 )
 from utils.spotify_handler import (
     get_currently_playing,
     get_queue,
     get_recently_played,
-    play_song,
-    get_several_tracks,
     get_several_artists,
-    get_top_artist_genres,
+    play_song,
 )
-import time
-from fastapi_utils.tasks import repeat_every
 
 currently_listening = {}
 
