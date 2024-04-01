@@ -25,7 +25,7 @@ SPOTIFY_CLIENT_SECRET = os.environ["SPOTIFY_CLIENT_SECRET"]
 
 async def create_session():
     global session
-    session: aiohttp.ClientSession = aiohttp.ClientSession()
+    session = aiohttp.ClientSession()
 
 
 async def close_session():
@@ -153,7 +153,9 @@ async def refresh_token(userid: str) -> dict:
     ) as resp:
         dat = await resp.json()
 
-    session_data: dict = SpotifySessionModel(**dat, refresh_token=refresh_token).dict()
+    session_data: dict = SpotifySessionModel(
+        **dat, refresh_token=refresh_token
+    ).model_dump()
 
     e = await update_session(userid, session_data)
     if e:
@@ -192,7 +194,7 @@ async def get_currently_playing(access_token: str) -> dict:
                 Artist(name=artist["name"], uri=artist["uri"])
                 for artist in resp_json["item"]["artists"]
             ],
-        ).dict()
+        ).model_dump()
 
 
 async def get_recently_played(access_token: str, unix_timestamp: int = 0) -> list:
@@ -308,7 +310,7 @@ async def update_user_genre(user: str = "", all: bool = True) -> None:
         user_token = user_.spotify_session_data.access_token
         resp = await get_top_artist_genres(user_token)
         user_.genres = resp[:5]
-        await update_user(str(user_._id), user_.dict())
+        await update_user(str(user_._id), user_.model_dump())
 
 
 async def get_song(access_token: str, uri: str):

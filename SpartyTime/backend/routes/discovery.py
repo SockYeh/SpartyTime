@@ -6,7 +6,6 @@ from utils.database_handler import (
     get_user_by_id,
     aggregate_party,
 )
-from utils.jwt_handler import decode_jwt
 from utils.session_manager import validate_session
 
 
@@ -47,7 +46,7 @@ async def get_parties_by_genre(request: Request, genre: str):
 
 @router.get("/match-user")
 async def match_genres(request: Request):
-    userid = decode_jwt(request.cookies["session"])["user_id"]
+    userid = request.session["user_id"]
     user = await get_user_by_id(userid)
     user_genres = user.genres
     parties = await aggregate_party(

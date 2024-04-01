@@ -14,7 +14,6 @@ from utils.database_handler import (
     update_party_instance,
     PartyInfoModel,
 )
-from utils.jwt_handler import decode_jwt
 from utils.session_manager import validate_session
 
 
@@ -45,7 +44,7 @@ class UpdateParty(BaseModel):
 
 async def is_owner(request: Request, party_id: str):
     auth_header = request.cookies["session"]
-    userid = decode_jwt(auth_header)["user_id"]
+    userid = request.session["user_id"]
     e = await get_party_instance(party_id)
     if not e:
         raise HTTPException(
@@ -61,12 +60,12 @@ async def is_owner(request: Request, party_id: str):
 @router.post("/party", status_code=status.HTTP_201_CREATED)
 async def create_party(request: Request, payload: Party):
     auth_header = request.cookies["session"]
-    userid = decode_jwt(auth_header)["user_id"]
+    userid = request.session["user_id"]
     party_info = PartyInfoModel(
-        **payload.dict(), owner=userid, start=round(time.time())
+        **payload.model_dump(), owner=userid, start=round(time.time())
     )
 
-    e = await create_party_instance({"party_info": party_info.dict()})
+    e = await create_party_instance({"party_info": party_info.model_dump()})
     if not e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -85,7 +84,7 @@ async def get_party(request: Request, party_id: str):
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail=f"Party not found. {str(e)}"
         )
-    return JSONResponse(content={"party": (e.dict())})
+    return JSONResponse(content={"party": (e.model_dump())})
 
 
 @router.patch(
@@ -124,7 +123,7 @@ async def delete_party(request: Request, party_id: str):
 @router.put("/party/{party_id}/users", status_code=status.HTTP_204_NO_CONTENT)
 async def add_user_to_party(request: Request, party_id: str):
     try:
-        userid = decode_jwt(request.cookies["session"])["user_id"]
+        userid = request.session["user_id"]
         _id = ObjectId(userid)
     except InvalidId:
         raise HTTPException(

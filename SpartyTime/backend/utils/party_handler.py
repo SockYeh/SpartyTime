@@ -34,7 +34,7 @@ async def check_for_inactivity():
         if not e:
             currently_listening.pop(party_id)
         try:
-            e = Party(**e.dict())
+            e = Party(**e.model_dump())
             party_data = e.party_data
             if (
                 abs(party_data.time_since_last_played - time.time()) >= 150
@@ -53,8 +53,8 @@ async def add_new_parties():
     parties = await get_parties()
 
     for party in parties:
-        if party["_id"] not in currently_listening.keys():
-            currently_listening[party["_id"]] = party["party_info"]["users"]
+        if party._id not in currently_listening.keys():
+            currently_listening[party._id] = party.party_info.users
 
 
 @repeat_every(seconds=5, raise_exceptions=True)
@@ -65,7 +65,7 @@ async def update_party_details():
             owner = await get_user_by_id(partym.party_info.owner)
             if not partym:
                 currently_listening.pop(party_id)
-            party = Party(**partym.dict())
+            party = Party(**partym.model_dump())
             owner_token = owner.spotify_session_data.access_token
             owner_currently_playing = await get_currently_playing(owner_token)
             party_data = PartyDataModel(
@@ -79,7 +79,7 @@ async def update_party_details():
             del owner_current_song["is_playing"]
             party_data.current_song = owner_current_song
             party.party_data = party_data
-            await update_party_instance(party_id, party.dict())
+            await update_party_instance(party_id, party.model_dump())
         except Exception:
             traceback.print_exc()
 
@@ -92,7 +92,7 @@ async def update_playback():
         partym = await get_party_instance(party_id)
         if not partym:
             currently_listening.pop(party_id)
-        party = Party(**partym.dict())
+        party = Party(**partym.model_dump())
 
         for user in users:
             if party.party_info.owner == str(user):
@@ -126,7 +126,7 @@ async def update_party_genre():
         if not party:
             currently_listening.pop(party_id)
         try:
-            party_data = Party(**party.dict()).party_data
+            party_data = Party(**party.model_dump()).party_data
         except KeyError:
             continue
         owner = await get_user_by_id(party.party_info.owner)
@@ -150,4 +150,4 @@ async def update_party_genre():
         party.party_info.genres = sorted(
             list(genres.keys()), key=lambda x: genres[x], reverse=True
         )[:5]
-        await update_party_instance(party_id, party.dict())
+        await update_party_instance(party_id, party.model_dump())
