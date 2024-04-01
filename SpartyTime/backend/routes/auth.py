@@ -13,9 +13,9 @@ from utils.spotify_handler import get_spotify_details, update_user_genre
 
 load_dotenv()
 
-SPOTIFY_CLIENT_ID = os.getenv("SPOTIFY_CLIENT_ID")
-SPOTIFY_CLIENT_SECRET = os.getenv("SPOTIFY_CLIENT_SECRET")
-REDIRECT_URL = os.getenv("REDIRECT_URL")
+SPOTIFY_CLIENT_ID = os.environ["SPOTIFY_CLIENT_ID"]
+SPOTIFY_CLIENT_SECRET = os.environ["SPOTIFY_CLIENT_SECRET"]
+REDIRECT_URL = os.environ["REDIRECT_URL"]
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -60,16 +60,16 @@ async def callback(request: Request, code: str):
     resp = JSONResponse(content={})
 
     if not await get_user_by_id(user_data["id"], is_spotify_id=True):
-        await create_user(user_data)
+        await create_user(user_data, dat)
         resp.status_code = status.HTTP_201_CREATED
 
     user = await get_user_by_id(user_data["id"], is_spotify_id=True)
 
     jwt_token = signJWT(
-        user["_id"],
+        str(user._id),
     )
     resp.set_cookie(key="session", value=jwt_token["access_token"])
-    await update_user_genre(user["_id"])
+    await update_user_genre(str(user._id))
     return resp
 
 
@@ -80,7 +80,7 @@ async def me(request: Request):
         if jwt_token:
             user_id = decode_jwt(jwt_token)["user_id"]
             user = await get_user_by_id(user_id)
-            access_token = user["spotify_session_data"]["access_token"]
+            access_token = user.spotify_session_data.access_token
             user_data = await get_spotify_details(access_token)
             return user_data
         else:
