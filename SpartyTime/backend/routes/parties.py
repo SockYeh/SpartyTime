@@ -13,7 +13,6 @@ from utils.database_handler import (
     get_party_instance,
     update_party_instance,
     PartyInfoModel,
-    PartyModel,
 )
 from utils.jwt_handler import decode_jwt
 from utils.session_manager import validate_session
