@@ -7,8 +7,8 @@ import six
 from dotenv import load_dotenv
 from fastapi import APIRouter, Request, status
 from fastapi.responses import JSONResponse, RedirectResponse
-from utils.database_handler import create_user, get_user_by_id
-from utils.spotify_handler import get_spotify_details, update_user_genre
+from ..utils.database_handler import create_user, get_user_by_id
+from ..utils.spotify_handler import get_spotify_details, update_user_genre
 
 load_dotenv()
 

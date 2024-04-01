@@ -2,9 +2,8 @@ import time, pydantic
 import traceback
 
 from fastapi_utils.tasks import repeat_every
-from utils.database_handler import (
+from ..utils.database_handler import (
     PartyDataModel,
-    PartyModel,
     delete_party_instance,
     get_parties,
     get_party_instance,
@@ -12,7 +11,7 @@ from utils.database_handler import (
     remove_party_member,
     update_party_instance,
 )
-from utils.spotify_handler import (
+from ..utils.spotify_handler import (
     get_currently_playing,
     get_queue,
     get_recently_played,

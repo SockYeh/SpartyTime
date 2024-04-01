@@ -60,9 +60,7 @@ class UserModel(pydantic.BaseModel):
     spotify_data: dict
     spotify_session_data: SpotifySessionModel
     current_party_id: str = ""
-
-    class Config:
-        arbitrary_types_allowed = True
+    model_config = {"arbitrary_types_allowed": True}
 
 
 async def create_user_db():
@@ -121,14 +119,13 @@ class PartyInfoModel(pydantic.BaseModel):
     owner: str
     type: str
 
-    @pydantic.validator("type", pre=True, always=True)
+    @pydantic.field_validator("type")
     def check_type(cls, value):
         if value not in ["public", "unlisted", "private"]:
             raise ValueError(f"{value} is not a valid party type. ")
         return value
 
-    class Config:
-        arbitrary_types_allowed = True
+    model_config = {"arbitrary_types_allowed": True}
 
 
 class PartyDataModel(pydantic.BaseModel):
@@ -144,8 +141,7 @@ class PartyModel(pydantic.BaseModel):
     party_info: PartyInfoModel
     party_data: PartyDataModel | None = None
 
-    class Config:
-        arbitrary_types_allowed = True
+    model_config = {"arbitrary_types_allowed": True}
 
 
 async def create_party_db():

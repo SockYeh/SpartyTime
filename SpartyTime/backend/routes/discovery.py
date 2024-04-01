@@ -1,12 +1,12 @@
 from bson.objectid import ObjectId
 from fastapi import APIRouter, Depends, Request, status
 from fastapi.responses import JSONResponse
-from utils.database_handler import (
+from ..utils.database_handler import (
     get_parties,
     get_user_by_id,
     aggregate_party,
 )
-from utils.session_manager import validate_session
+from ..utils.session_manager import validate_session
 
 
 router = APIRouter(

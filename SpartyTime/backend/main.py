@@ -4,16 +4,16 @@ from contextlib import asynccontextmanager
 from dotenv import load_dotenv, find_dotenv
 from starlette.middleware.sessions import SessionMiddleware
 
-from routes import auth, parties, discovery
-from utils.database_handler import close_db, delete_parties, open_db
-from utils.party_handler import (
+from .routes import auth, parties, discovery
+from .utils.database_handler import close_db, delete_parties, open_db
+from .utils.party_handler import (
     add_new_parties,
     check_for_inactivity,
     update_party_details,
     update_playback,
     update_party_genre,
 )
-from utils.spotify_handler import close_session, create_session, update_user_genre
+from .utils.spotify_handler import close_session, create_session, update_user_genre
 
 load_dotenv(find_dotenv())
 

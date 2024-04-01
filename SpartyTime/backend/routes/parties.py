@@ -7,14 +7,14 @@ from bson.errors import InvalidId
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
-from utils.database_handler import (
+from ..utils.database_handler import (
     create_party_instance,
     delete_party_instance,
     get_party_instance,
     update_party_instance,
     PartyInfoModel,
 )
-from utils.session_manager import validate_session
+from ..utils.session_manager import validate_session
 
 
 router = APIRouter(
@@ -28,7 +28,7 @@ class Party(BaseModel):
     users: Optional[list[str]] = []
     type: str
 
-    @pydantic.validator("type", pre=True, always=True)
+    @pydantic.field_validator("type")
     def check_type(cls, value):
         if value not in ["public", "unlisted", "private"]:
             raise ValueError(f"{value} is not a valid party type. ")
