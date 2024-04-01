@@ -5,6 +5,10 @@ from dotenv import find_dotenv, load_dotenv
 from email_validator import EmailNotValidError, validate_email
 from motor.motor_asyncio import AsyncIOMotorClient
 from pymongo import errors
+from bson.errors import InvalidId
+from bson.objectid import ObjectId
+import pydantic
+
 
 load_dotenv(find_dotenv())
 
@@ -15,23 +19,47 @@ client = None
 
 async def open_db():
     global client, users_db, parties_db
-    client = AsyncIOMotorClient(connection_str)
+    client = AsyncIOMotorClient(connection_str)  # type ignore
     users_db = client.users
     parties_db = client.parties
 
 
 async def close_db():
-    client.close()
+    client.close()  # pyright: ignore
 
 
-def convert_to_bson_id(bson_id: str) -> str:
-    from bson.objectid import ObjectId
+def convert_to_bson_id(bson_id: str) -> ObjectId:
 
     return ObjectId(bson_id)
 
 
+class SpotifySessionModel(pydantic.BaseModel):
+    access_token: str
+    token_type: str
+    expires_in: int
+    scope: str
+    refresh_token: str
+    expires_at: int
+
+
+class UserModel(pydantic.BaseModel):
+    _id: ObjectId
+    username: str
+    genres: list[str]
+    spotify_id: str
+    spotify_data: dict
+    spotify_session_data: SpotifySessionModel
+    current_party_id: str
+
+    @pydantic.validator("_id", pre=True, always=True)
+    def check_id(cls, value):
+        if not ObjectId.is_valid(value):
+            raise InvalidId(f"{value} is not a valid ObjectId. ")
+        return value
+
+
 async def create_user_db():
-    await client.drop_database("users")
+    await client.drop_database("users")  # pyright: ignore
     auth_validator = {
         "$jsonSchema": {
             "bsonType": "object",
@@ -70,14 +98,63 @@ async def create_user_db():
     except Exception as e:
         print(e)
 
-    users_db.command("collMod", "auth_details", validator=auth_validator)
+    await users_db.command("collMod", "auth_details", validator=auth_validator)
 
-    users_db.auth_details.create_index("username", unique=True)
-    users_db.auth_details.create_index("spotify_id", unique=True)
+    await users_db.auth_details.create_index("username", unique=True)
+    await users_db.auth_details.create_index("spotify_id", unique=True)
+
+
+class PartyInfoModel(pydantic.BaseModel):
+    party_name: str
+    party_description: str
+    genres: list[str]
+    start: int
+    users: list[ObjectId]
+    owner: str
+    type: str
+
+    @pydantic.validator("owner", pre=True, always=True)
+    def check_owner(cls, value):
+        if not ObjectId.is_valid(value):
+            raise InvalidId(f"{value} is not a valid ObjectId. ")
+        return value
+
+    @pydantic.validator("users", pre=True, always=True)
+    def check_users(cls, value):
+        for user in value:
+            if not ObjectId.is_valid(user):
+                raise InvalidId(f"{user} is not a valid ObjectId. ")
+        return value
+
+    @pydantic.validator("type", pre=True, always=True)
+    def check_type(cls, value):
+        if value not in ["public", "unlisted", "private"]:
+            raise ValueError(f"{value} is not a valid party type. ")
+        return value
+
+
+class PartyDataModel(pydantic.BaseModel):
+    is_playing: bool
+    current_song: dict
+    time_since_last_played: int
+    queue: list[dict]
+    history: list[dict]
+
+
+class PartyModel(pydantic.BaseModel):
+    _id: ObjectId
+    party_info: PartyInfoModel
+    party_data: PartyDataModel | None
+
+    @pydantic.validator("_id", pre=True, always=True)
+    def check_id(cls, value):
+        if not ObjectId.is_valid(value):
+            raise InvalidId(f"{value} is not a valid ObjectId. ")
+        return value
 
 
 async def create_party_db():
-    await client.drop_database("parties")
+    await client.drop_database("parties")  # pyright: ignore
 
     party_validator = {
         "$jsonSchema": {
@@ -169,21 +246,18 @@ async def create_party_db():
     except Exception as e:
         print(e)
 
-    parties_db.command("collMod", "party_details", validator=party_validator)
+    await parties_db.command("collMod", "party_details", validator=party_validator)
 
 
-async def get_user_by_id(_id: str, is_spotify_id=False):
+async def get_user_by_id(_id: str, is_spotify_id=False) -> UserModel:
     query = {"spotify_id": _id} if is_spotify_id else {"_id": convert_to_bson_id(_id)}
     op = await users_db.auth_details.find_one(query)
-
-    if op:
-        op["_id"] = str(op["_id"])
-        return op
-
-    return None
+    if not op:
+        raise ValueError(f"User with id {_id} not found. ")
+    return UserModel(**op)
 
 
-async def create_user(spotify_dict: dict, spotify_session_dict: dict):
+async def create_user(spotify_dict: dict, spotify_session_dict: dict) -> bool:
     try:
         username = spotify_dict["display_name"]
         user_id = spotify_dict["id"]
@@ -200,7 +274,7 @@ async def create_user(spotify_dict: dict, spotify_session_dict: dict):
         return False
 
 
-async def update_session(user_id: str, session_data: dict):
+async def update_session(user_id: str, session_data: dict) -> bool:
     try:
         e = await users_db.auth_details.update_one(
             {"_id": convert_to_bson_id(user_id)},
@@ -211,7 +285,7 @@ async def update_session(user_id: str, session_data: dict):
         return False
 
 
-async def update_user(user_id: str, user_data: dict):
+async def update_user(user_id: str, user_data: dict) -> bool:
     try:
         e = await users_db.auth_details.update_one(
             {"_id": convert_to_bson_id(user_id)},
@@ -222,15 +296,13 @@ async def update_user(user_id: str, user_data: dict):
         return False
 
 
-async def get_user_by_access_token(access_token: str):
+async def get_user_by_access_token(access_token: str) -> UserModel:
     query = {"spotify_session_data.access_token": access_token}
     op = await users_db.auth_details.find_one(query)
 
-    if op:
-        op["_id"] = str(op["_id"])
-        return op
-
-    return None
+    if not op:
+        raise ValueError(f"User with access token {access_token} not found. ")
+    return UserModel(**op)
 
 
 async def create_party_instance(party: dict):
@@ -238,30 +310,28 @@ async def create_party_instance(party: dict):
     return e.inserted_id
 
 
-async def get_party_instance(party_id: str):
+async def get_party_instance(party_id: str) -> PartyModel:
     query = {"_id": convert_to_bson_id(party_id)}
     op = await parties_db.party_details.find_one(query)
 
-    if op:
-        op["_id"] = str(op["_id"])
-        op["party_info"]["users"] = [str(i) for i in op["party_info"]["users"]]
-        return op
-
-    return None
+    if not op:
+        raise ValueError(f"Party with id {party_id} not found")
+    return PartyModel(**op)
 
 
-async def get_party_instance_by_owner(owner_id: str):
+async def get_party_instance_by_owner(owner_id: str) -> PartyModel:
     query = {"party_info.owner": owner_id}
     op = await parties_db.party_details.find_one(query)
 
-    if op:
-        op["_id"] = str(op["_id"])
-        return op
+    if not op:
+        raise ValueError(f"Party with owner id {owner_id} not found. ")
 
-    return None
+    return PartyModel(**op)
 
 
-async def update_party_instance(party_id: str, party: dict, method: str = "$set"):
+async def update_party_instance(
+    party_id: str, party: dict, method: str = "$set"
+) -> bool:
     try:
         del party["_id"]
     except KeyError:
@@ -272,7 +342,7 @@ async def update_party_instance(party_id: str, party: dict, method: str = "$set"
     return True
 
 
-async def remove_party_member(party_id: str, user_id: str):
+async def remove_party_member(party_id: str, user_id: str) -> bool:
     await parties_db.party_details.update_one(
         {"_id": convert_to_bson_id(party_id)}, {"$pull": {"party_info.users": user_id}}
     )
@@ -282,26 +352,26 @@ async def remove_party_member(party_id: str, user_id: str):
     return True
 
 
-async def delete_party_instance(party_id: str):
+async def delete_party_instance(party_id: str) -> bool:
     await parties_db.party_details.delete_one({"_id": convert_to_bson_id(party_id)})
     return True
 
 
-async def get_parties(filter_dict: dict = {}):
+async def get_parties(filter_dict: dict = {}) -> list:
     op = parties_db.party_details.find(filter_dict)
-    return op
+    return [PartyModel(**i) async for i in op]
 
 
-async def delete_parties():
+async def delete_parties() -> bool:
     await parties_db.party_details.delete_many({})
     return True
 
 
-async def get_users(filter_dict: dict = {}):
+async def get_users(filter_dict: dict = {}) -> list:
     op = users_db.auth_details.find(filter_dict)
-    return op
+    return [UserModel(**i) async for i in op]
 
 
-async def get_party(filter_dict: dict = {}):
-    op = parties_db.party_details.find_one(filter_dict)
-    return op
+async def aggregate_party(filter_dict: list) -> list:
+    op = parties_db.party_details.aggregate(filter_dict)
+    return [PartyModel(**i) async for i in op]
