@@ -84,7 +84,9 @@ async def get_party(request: Request, party_id: str):
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail=f"Party not found. {str(e)}"
         )
-    return JSONResponse(content={"party": (e.model_dump())})
+    opd = e.model_dump()
+    opd["id"] = str(e.id)
+    return JSONResponse(content={"party": opd})
 
 
 @router.patch(
@@ -93,7 +95,7 @@ async def get_party(request: Request, party_id: str):
     dependencies=[Depends(is_owner)],
 )
 async def update_party(request: Request, party_id: str, payload: UpdateParty):
-    converted = payload.dict(exclude_none=True)
+    converted = payload.model_dump(exclude_unset=True)
 
     e = await update_party_instance(
         party_id,

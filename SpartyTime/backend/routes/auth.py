@@ -64,8 +64,8 @@ async def callback(request: Request, code: str):
 
     user = await get_user_by_id(user_data["id"], is_spotify_id=True)
 
-    request.session["user_id"] = str(user._id)
-    await update_user_genre(str(user._id))
+    request.session["user_id"] = str(user.id)
+    await update_user_genre(str(user.id))
     return resp
 
 

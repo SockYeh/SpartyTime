@@ -33,7 +33,7 @@ async def lifespan(app: FastAPI):
 
     await delete_parties()
     await close_db()
-    await close_session()
+    await close_session()  # pyright: ignore
 
 
 app = FastAPI(lifespan=lifespan)

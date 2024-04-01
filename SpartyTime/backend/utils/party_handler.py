@@ -1,4 +1,4 @@
-import time
+import time, pydantic
 import traceback
 
 from fastapi_utils.tasks import repeat_every
@@ -23,18 +23,15 @@ from utils.spotify_handler import (
 currently_listening = {}
 
 
-class Party(PartyModel):
-    party_data: PartyDataModel
-
-
 @repeat_every(seconds=5, raise_exceptions=True)
 async def check_for_inactivity():
     for party_id in currently_listening.keys():
         e = await get_party_instance(party_id)
         if not e:
             currently_listening.pop(party_id)
+        if not e.party_data:
+            continue
         try:
-            e = Party(**e.model_dump())
             party_data = e.party_data
             if (
                 abs(party_data.time_since_last_played - time.time()) >= 150
@@ -53,27 +50,28 @@ async def add_new_parties():
     parties = await get_parties()
 
     for party in parties:
-        if party._id not in currently_listening.keys():
-            currently_listening[party._id] = party.party_info.users
+        if party.id not in currently_listening.keys():
+            currently_listening[party.id] = party.party_info.users
 
 
 @repeat_every(seconds=5, raise_exceptions=True)
 async def update_party_details():
     for party_id in currently_listening.keys():
         try:
-            partym = await get_party_instance(party_id)
-            owner = await get_user_by_id(partym.party_info.owner)
-            if not partym:
+            party = await get_party_instance(party_id)
+            owner = await get_user_by_id(party.party_info.owner)
+            if not party:
                 currently_listening.pop(party_id)
-            party = Party(**partym.model_dump())
             owner_token = owner.spotify_session_data.access_token
             owner_currently_playing = await get_currently_playing(owner_token)
             party_data = PartyDataModel(
                 is_playing=owner_currently_playing["is_playing"],
                 current_song={},
                 time_since_last_played=round(time.time()),
-                queue=(await get_queue(owner_token))[:5],
-                history=await get_recently_played(owner_token),
+                queue=[i.model_dump() for i in (await get_queue(owner_token))[:5]],
+                history=[
+                    i.model_dump() for i in await get_recently_played(owner_token)
+                ],
             )
             owner_current_song = owner_currently_playing
             del owner_current_song["is_playing"]
@@ -89,10 +87,11 @@ async def update_party_details():
 @repeat_every(seconds=5, raise_exceptions=True)
 async def update_playback():
     for party_id, users in currently_listening.items():
-        partym = await get_party_instance(party_id)
-        if not partym:
+        party = await get_party_instance(party_id)
+        if not party:
             currently_listening.pop(party_id)
-        party = Party(**partym.model_dump())
+        if not party.party_data:
+            continue
 
         for user in users:
             if party.party_info.owner == str(user):
@@ -103,7 +102,7 @@ async def update_playback():
             user_currently_playing = await get_currently_playing(user_token)
 
             if not user_currently_playing["is_playing"]:
-                await remove_party_member(party_id, str(user._id))
+                await remove_party_member(party_id, str(user.id))
 
                 continue
             if user_currently_playing["uri"] != party.party_data.current_song[
@@ -125,10 +124,9 @@ async def update_party_genre():
         party = await get_party_instance(party_id)
         if not party:
             currently_listening.pop(party_id)
-        try:
-            party_data = Party(**party.model_dump()).party_data
-        except KeyError:
+        if not party.party_data:
             continue
+        party_data = party.party_data
         owner = await get_user_by_id(party.party_info.owner)
         owner_token = owner.spotify_session_data.access_token
         history_artist_uris = [

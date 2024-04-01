@@ -123,7 +123,7 @@ async def get_spotify_details(access_token: str) -> dict:
         if resp.status == 401:
             try:
                 user = await get_user_by_access_token(access_token)
-                userid = str(user._id)
+                userid = str(user.id)
                 spotify_auth_data = await refresh_token(userid)
                 access_token = spotify_auth_data["access_token"]
                 return await get_spotify_details(access_token)
@@ -172,7 +172,7 @@ async def get_currently_playing(access_token: str) -> dict:
         if resp.status == 401:
             try:
                 user = await get_user_by_access_token(access_token)
-                userid = str(user._id)
+                userid = str(user.id)
                 spotify_auth_data = await refresh_token(userid)
                 access_token = spotify_auth_data["access_token"]
                 return await get_currently_playing(access_token)
@@ -197,7 +197,9 @@ async def get_currently_playing(access_token: str) -> dict:
         ).model_dump()
 
 
-async def get_recently_played(access_token: str, unix_timestamp: int = 0) -> list:
+async def get_recently_played(
+    access_token: str, unix_timestamp: int = 0
+) -> list[ParsedItem]:
     async with session.get(
         (
             f"https://api.spotify.com/v1/me/player/recently-played?limit=5&after={unix_timestamp}"
@@ -210,7 +212,7 @@ async def get_recently_played(access_token: str, unix_timestamp: int = 0) -> lis
         if resp.status == 401:
             try:
                 user = await get_user_by_access_token(access_token)
-                userid = str(user._id)
+                userid = str(user.id)
                 spotify_auth_data = await refresh_token(userid)
                 access_token = spotify_auth_data["access_token"]
                 return await get_recently_played(access_token)
@@ -219,7 +221,7 @@ async def get_recently_played(access_token: str, unix_timestamp: int = 0) -> lis
         return parse_items_json(await resp.json())
 
 
-async def get_queue(access_token: str) -> list:
+async def get_queue(access_token: str) -> list[ParsedItem]:
     async with session.get(
         f"https://api.spotify.com/v1/me/player/queue?limit=5",
         headers=get_headers(access_token),
@@ -227,7 +229,7 @@ async def get_queue(access_token: str) -> list:
         if resp.status == 401:
             try:
                 user = await get_user_by_access_token(access_token)
-                userid = str(user._id)
+                userid = str(user.id)
                 spotify_auth_data = await refresh_token(userid)
                 access_token = spotify_auth_data["access_token"]
                 return await get_queue(access_token)
@@ -247,7 +249,7 @@ async def play_song(access_token: str, uri: str, position_ms: int = 0) -> int:
         if resp.status == 401:
             try:
                 user = await get_user_by_access_token(access_token)
-                userid = str(user._id)
+                userid = str(user.id)
                 spotify_auth_data = await refresh_token(userid)
                 access_token = spotify_auth_data["access_token"]
                 return await play_song(access_token, uri)
@@ -264,7 +266,7 @@ async def get_several_tracks(access_token: str, uris: list) -> dict:
         if resp.status == 401:
             try:
                 user = await get_user_by_access_token(access_token)
-                userid = str(user._id)
+                userid = str(user.id)
                 spotify_auth_data = await refresh_token(userid)
                 access_token = spotify_auth_data["access_token"]
                 return await get_several_tracks(access_token, uris)
@@ -281,7 +283,7 @@ async def get_top_artist_genres(access_token: str) -> list:
         if resp.status == 401:
             try:
                 user = await get_user_by_access_token(access_token)
-                userid = str(user._id)
+                userid = str(user.id)
                 spotify_auth_data = await refresh_token(userid)
                 access_token = spotify_auth_data["access_token"]
                 return await get_top_artist_genres(access_token)
@@ -310,7 +312,7 @@ async def update_user_genre(user: str = "", all: bool = True) -> None:
         user_token = user_.spotify_session_data.access_token
         resp = await get_top_artist_genres(user_token)
         user_.genres = resp[:5]
-        await update_user(str(user_._id), user_.model_dump())
+        await update_user(str(user_.id), user_.model_dump())
 
 
 async def get_song(access_token: str, uri: str):
@@ -321,7 +323,7 @@ async def get_song(access_token: str, uri: str):
         if resp.status == 401:
             try:
                 user = await get_user_by_access_token(access_token)
-                userid = str(user._id)
+                userid = str(user.id)
                 spotify_auth_data = await refresh_token(userid)
                 access_token = spotify_auth_data["access_token"]
                 return await get_song(access_token, uri)
@@ -338,7 +340,7 @@ async def get_several_artists(access_token: str, uris: list):
         if resp.status == 401:
             try:
                 user = await get_user_by_access_token(access_token)
-                userid = str(user._id)
+                userid = str(user.id)
                 spotify_auth_data = await refresh_token(userid)
                 access_token = spotify_auth_data["access_token"]
                 return await get_several_artists(access_token, uris)

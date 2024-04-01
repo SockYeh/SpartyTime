@@ -18,7 +18,7 @@ router = APIRouter(
 
 async def convert_bsons_to_str(data: list) -> list:
     for item in data:
-        item._id = str(item._id)
+        item.id = str(item.id)
         item.party_info.owner = str(item.party_info.owner)
         item.party_info.users = [str(user) for user in item.party_info.users]
     return data

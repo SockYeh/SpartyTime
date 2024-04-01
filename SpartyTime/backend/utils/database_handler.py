@@ -31,29 +31,38 @@ def convert_to_bson_id(bson_id: str) -> ObjectId:
     return ObjectId(bson_id)
 
 
+def switch_id_to_pydantic(data: dict) -> dict:
+    data["id"] = data["_id"]
+    del data["_id"]
+    return data
+
+
+def switch_id_to_mongo(data: dict) -> dict:
+    data["_id"] = data["id"]
+    del data["id"]
+    return data
+
+
 class SpotifySessionModel(pydantic.BaseModel):
     access_token: str
     token_type: str
     expires_in: int
     scope: str
     refresh_token: str
-    expires_at: int
+    expires_in: int
 
 
 class UserModel(pydantic.BaseModel):
-    _id: ObjectId
+    id: ObjectId
     username: str
-    genres: list[str]
+    genres: list[str] = []
     spotify_id: str
     spotify_data: dict
     spotify_session_data: SpotifySessionModel
-    current_party_id: str
+    current_party_id: str = ""
 
-    @pydantic.validator("_id", pre=True, always=True)
-    def check_id(cls, value):
-        if not ObjectId.is_valid(value):
-            raise InvalidId(f"{value} is not a valid ObjectId. ")
-        return value
+    class Config:
+        arbitrary_types_allowed = True
 
 
 async def create_user_db():
@@ -103,32 +112,23 @@ async def create_user_db():
 
 
 class PartyInfoModel(pydantic.BaseModel):
+
     party_name: str
     party_description: str
-    genres: list[str]
+    genres: list[str] = []
     start: int
     users: list[ObjectId]
     owner: str
     type: str
-
-    @pydantic.validator("owner", pre=True, always=True)
-    def check_owner(cls, value):
-        if not ObjectId.is_valid(value):
-            raise InvalidId(f"{value} is not a valid ObjectId. ")
-        return value
-
-    @pydantic.validator("users", pre=True, always=True)
-    def check_users(cls, value):
-        for user in value:
-            if not ObjectId.is_valid(user):
-                raise InvalidId(f"{user} is not a valid ObjectId. ")
-        return value
 
     @pydantic.validator("type", pre=True, always=True)
     def check_type(cls, value):
         if value not in ["public", "unlisted", "private"]:
             raise ValueError(f"{value} is not a valid party type. ")
         return value
+
+    class Config:
+        arbitrary_types_allowed = True
 
 
 class PartyDataModel(pydantic.BaseModel):
@@ -140,15 +140,12 @@ class PartyDataModel(pydantic.BaseModel):
 
 
 class PartyModel(pydantic.BaseModel):
-    _id: ObjectId
+    id: ObjectId
     party_info: PartyInfoModel
-    party_data: PartyDataModel | None
+    party_data: PartyDataModel | None = None
 
-    @pydantic.validator("_id", pre=True, always=True)
-    def check_id(cls, value):
-        if not ObjectId.is_valid(value):
-            raise InvalidId(f"{value} is not a valid ObjectId. ")
-        return value
+    class Config:
+        arbitrary_types_allowed = True
 
 
 async def create_party_db():
@@ -250,8 +247,10 @@ async def create_party_db():
 async def get_user_by_id(_id: str, is_spotify_id=False) -> UserModel:
     query = {"spotify_id": _id} if is_spotify_id else {"_id": convert_to_bson_id(_id)}
     op = await users_db.auth_details.find_one(query)
+
     if not op:
         raise ValueError(f"User with id {_id} not found. ")
+    op = switch_id_to_pydantic(op)
     return UserModel(**op)
 
 
@@ -294,12 +293,13 @@ async def update_user(user_id: str, user_data: dict) -> bool:
         return False
 
 
-async def get_user_by_access_token(access_token: str) -> UserModel:
+async def get_user_by_access_token(access_token: str):
     query = {"spotify_session_data.access_token": access_token}
     op = await users_db.auth_details.find_one(query)
 
     if not op:
         raise ValueError(f"User with access token {access_token} not found. ")
+    op = switch_id_to_pydantic(op)
     return UserModel(**op)
 
 
@@ -314,6 +314,7 @@ async def get_party_instance(party_id: str) -> PartyModel:
 
     if not op:
         raise ValueError(f"Party with id {party_id} not found")
+    op = switch_id_to_pydantic(op)
     return PartyModel(**op)
 
 
@@ -323,7 +324,7 @@ async def get_party_instance_by_owner(owner_id: str) -> PartyModel:
 
     if not op:
         raise ValueError(f"Party with owner id {owner_id} not found. ")
-
+    op = switch_id_to_pydantic(op)
     return PartyModel(**op)
 
 
@@ -331,7 +332,7 @@ async def update_party_instance(
     party_id: str, party: dict, method: str = "$set"
 ) -> bool:
     try:
-        del party["_id"]
+        del party["id"]
     except KeyError:
         pass
     await parties_db.party_details.update_one(
@@ -355,9 +356,10 @@ async def delete_party_instance(party_id: str) -> bool:
     return True
 
 
-async def get_parties(filter_dict: dict = {}) -> list:
+async def get_parties(filter_dict: dict = {}) -> list[PartyModel]:
     op = parties_db.party_details.find(filter_dict)
-    return [PartyModel(**i) async for i in op]
+    op = [switch_id_to_pydantic(i) async for i in op]
+    return [PartyModel(**i) for i in op]
 
 
 async def delete_parties() -> bool:
@@ -367,9 +369,11 @@ async def delete_parties() -> bool:
 
 async def get_users(filter_dict: dict = {}) -> list:
     op = users_db.auth_details.find(filter_dict)
-    return [UserModel(**i) async for i in op]
+    op = [switch_id_to_pydantic(i) async for i in op]
+    return [UserModel(**i) for i in op]
 
 
 async def aggregate_party(filter_dict: list) -> list:
     op = parties_db.party_details.aggregate(filter_dict)
-    return [PartyModel(**i) async for i in op]
+    op = [switch_id_to_pydantic(i) async for i in op]
+    return [PartyModel(**i) for i in op]
