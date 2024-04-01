@@ -14,7 +14,6 @@ from .database_handler import (
     update_session,
     get_users,
     update_user,
-    UserModel,
     SpotifySessionModel,
 )
 
