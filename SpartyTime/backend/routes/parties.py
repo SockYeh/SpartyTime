@@ -1,9 +1,9 @@
 import time
 from typing import Optional
 
+import pydantic
 from bson.objectid import ObjectId
 from bson.errors import InvalidId
-from dotenv import load_dotenv
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
@@ -12,6 +12,8 @@ from utils.database_handler import (
     delete_party_instance,
     get_party_instance,
     update_party_instance,
+    PartyInfoModel,
+    PartyModel,
 )
 from utils.jwt_handler import decode_jwt
 from utils.session_manager import validate_session
@@ -24,9 +26,15 @@ router = APIRouter(
 
 class Party(BaseModel):
     party_name: str
-    party_description: Optional[str] = None
+    party_description: Optional[str] = "This is a party."
     users: Optional[list[str]] = []
     type: str
+
+    @pydantic.validator("type", pre=True, always=True)
+    def check_type(cls, value):
+        if value not in ["public", "unlisted", "private"]:
+            raise ValueError(f"{value} is not a valid party type. ")
+        return value
 
 
 class UpdateParty(BaseModel):
@@ -44,7 +52,7 @@ async def is_owner(request: Request, party_id: str):
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail=f"Party not found. {str(e)}"
         )
-    if e["party_info"]["owner"] != userid:
+    if e.party_info.owner != userid:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED, detail=f"Unauthorized. {str(e)}"
         )
@@ -55,21 +63,11 @@ async def is_owner(request: Request, party_id: str):
 async def create_party(request: Request, payload: Party):
     auth_header = request.cookies["session"]
     userid = decode_jwt(auth_header)["user_id"]
-    party_dict = {
-        "party_info": {
-            "party_name": payload.party_name,
-            "party_description": (
-                payload.party_description
-                if payload.party_description
-                else "This is a party."
-            ),
-            "start": round(time.time()),
-            "users": payload.users,
-            "owner": userid,
-            "type": payload.type,
-        }
-    }
-    e = await create_party_instance(party_dict)
+    party_info = PartyInfoModel(
+        **payload.dict(), owner=userid, start=round(time.time())
+    )
+
+    e = await create_party_instance({"party_info": party_info.dict()})
     if not e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -88,7 +86,7 @@ async def get_party(request: Request, party_id: str):
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail=f"Party not found. {str(e)}"
         )
-    return JSONResponse(content={"party": (e)})
+    return JSONResponse(content={"party": (e.dict())})
 
 
 @router.patch(
@@ -139,7 +137,7 @@ async def add_user_to_party(request: Request, party_id: str):
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail=f"Party not found."
         )
-    if party["party_info"]["type"] == "private":
+    if party.party_info.type == "private":
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail=f"Unauthorized. Party is private.",
