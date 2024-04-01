@@ -1,8 +1,6 @@
-import asyncio
 import os
 
 from dotenv import find_dotenv, load_dotenv
-from email_validator import EmailNotValidError, validate_email
 from motor.motor_asyncio import AsyncIOMotorClient
 from pymongo import errors
 from bson.errors import InvalidId
