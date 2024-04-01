@@ -27,7 +27,7 @@ async def lifespan(app: FastAPI):
     await update_party_genre()
     yield
 
-    # await delete_parties()
+    await delete_parties()
     await close_db()
     await close_session()
 
@@ -41,4 +41,4 @@ for router in routers:
 
 if __name__ == "__main__":
 
-    uvicorn.run("main:app", reload=True)
+    uvicorn.run(app="main:app", reload=True)
