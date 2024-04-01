@@ -1,16 +1,10 @@
-import time, json
-from typing import Optional
-
 from bson.objectid import ObjectId
-from bson.errors import InvalidId
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi import APIRouter, Depends, Request, status
 from fastapi.responses import JSONResponse
-from pydantic import BaseModel
 from utils.database_handler import (
     get_parties,
     get_user_by_id,
     aggregate_party,
-    PartyModel,
 )
 from utils.jwt_handler import decode_jwt
 from utils.session_manager import validate_session
