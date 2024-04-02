@@ -24,11 +24,13 @@ SPOTIFY_CLIENT_SECRET = os.environ["SPOTIFY_CLIENT_SECRET"]
 
 
 async def create_session():
+    """Create an aiohttp session."""
     global session
     session = aiohttp.ClientSession()
 
 
 async def close_session():
+    """Close the aiohttp session."""
     await session.close()
 
 
@@ -38,6 +40,7 @@ class SpotifyError(Exception):
 
 
 def get_headers(access_token: str) -> dict:
+    """Get the headers for the Spotify API requests."""
     return {
         "Authorization": f"Bearer {access_token}",
         "Content-Type": "application/x-www-form-urlencoded",
@@ -72,6 +75,7 @@ class CurrentlyPlaying(pydantic.BaseModel):
 
 
 def parse_items_json(items: dict, type: str = "recent") -> list[ParsedItem]:
+    """Parse the items from the Spotify API response."""
     parse_with = "items"
     if type == "queue":
         parse_with = "queue"
@@ -114,6 +118,7 @@ def parse_items_json(items: dict, type: str = "recent") -> list[ParsedItem]:
 
 
 async def get_spotify_details(access_token: str) -> dict:
+    """Get the Spotify details for the user."""
     session = aiohttp.ClientSession()
 
     async with session.get(
@@ -133,6 +138,7 @@ async def get_spotify_details(access_token: str) -> dict:
 
 
 async def refresh_token(userid: str) -> dict:
+    """Refresh the Spotify token for given user id."""
     userdata = await get_user_by_id(userid)
     refresh_token = userdata.spotify_session_data.refresh_token
 
@@ -165,6 +171,7 @@ async def refresh_token(userid: str) -> dict:
 
 
 async def get_currently_playing(access_token: str) -> dict:
+    """Get the currently playing song for the user."""
     async with session.get(
         f"https://api.spotify.com/v1/me/player/currently-playing",
         headers=get_headers(access_token),
@@ -200,6 +207,7 @@ async def get_currently_playing(access_token: str) -> dict:
 async def get_recently_played(
     access_token: str, unix_timestamp: int = 0
 ) -> list[ParsedItem]:
+    """Get the recently played songs for the user."""
     async with session.get(
         (
             f"https://api.spotify.com/v1/me/player/recently-played?limit=5&after={unix_timestamp}"
@@ -222,6 +230,7 @@ async def get_recently_played(
 
 
 async def get_queue(access_token: str) -> list[ParsedItem]:
+    """Get the queue for the user."""
     async with session.get(
         f"https://api.spotify.com/v1/me/player/queue?limit=5",
         headers=get_headers(access_token),
@@ -239,6 +248,7 @@ async def get_queue(access_token: str) -> list[ParsedItem]:
 
 
 async def play_song(access_token: str, uri: str, position_ms: int = 0) -> int:
+    """Play a song for the user."""
     headers = get_headers(access_token)
     headers["Content-Type"] = "application/json"
     async with session.put(
@@ -259,6 +269,7 @@ async def play_song(access_token: str, uri: str, position_ms: int = 0) -> int:
 
 
 async def get_several_tracks(access_token: str, uris: list) -> dict:
+    """Get several tracks by their uris."""
     headers = get_headers(access_token)
     async with session.get(
         f"https://api.spotify.com/v1/tracks?ids={','.join(uris)}", headers=headers
@@ -276,6 +287,7 @@ async def get_several_tracks(access_token: str, uris: list) -> dict:
 
 
 async def get_top_artist_genres(access_token: str) -> list:
+    """Get the top artist genres for the user."""
     headers = get_headers(access_token)
     async with session.get(
         f"https://api.spotify.com/v1/me/top/artists", headers=headers
@@ -302,7 +314,7 @@ async def get_top_artist_genres(access_token: str) -> list:
 
 
 async def update_user_genre(user: str = "", all: bool = True) -> None:
-
+    """Update the user genres in the database."""
     if all:
         users = await get_users()
     else:
@@ -316,6 +328,7 @@ async def update_user_genre(user: str = "", all: bool = True) -> None:
 
 
 async def get_song(access_token: str, uri: str):
+    """Get a song by its uri."""
     headers = get_headers(access_token)
     async with session.get(
         f"https://api.spotify.com/v1/tracks/{uri}", headers=headers
@@ -333,6 +346,7 @@ async def get_song(access_token: str, uri: str):
 
 
 async def get_several_artists(access_token: str, uris: list):
+    """Get several artists by their uris."""
     headers = get_headers(access_token)
     async with session.get(
         f"https://api.spotify.com/v1/artists?ids={','.join(uris)}", headers=headers

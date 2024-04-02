@@ -17,6 +17,7 @@ router = APIRouter(
 
 
 async def convert_bsons_to_str(data: list) -> list:
+    """Converts BSON object ids to strings"""
     for item in data:
         item.id = str(item.id)
         item.party_info.owner = str(item.party_info.owner)
@@ -25,7 +26,8 @@ async def convert_bsons_to_str(data: list) -> list:
 
 
 @router.get("/parties")
-async def get_all_parties(request: Request):
+async def get_all_parties(request: Request) -> JSONResponse:
+    """API endpoint to get all parties"""
     parties = await get_parties()
 
     return JSONResponse(
@@ -35,7 +37,8 @@ async def get_all_parties(request: Request):
 
 
 @router.get("/parties/{genre}")
-async def get_parties_by_genre(request: Request, genre: str):
+async def get_parties_by_genre(request: Request, genre: str) -> JSONResponse:
+    """API endpoint to get parties by genre"""
     parties = await get_parties({"party_info.genres": genre})
 
     return JSONResponse(
@@ -45,7 +48,8 @@ async def get_parties_by_genre(request: Request, genre: str):
 
 
 @router.get("/match-user")
-async def match_genres(request: Request):
+async def match_genres(request: Request) -> JSONResponse:
+    """API endpoint to match user genres with party genres and return parties with highest intersection"""
     userid = request.session["user_id"]
     user = await get_user_by_id(userid)
     user_genres = user.genres

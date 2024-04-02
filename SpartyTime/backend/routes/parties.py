@@ -42,8 +42,8 @@ class UpdateParty(BaseModel):
     type: Optional[str] = None
 
 
-async def is_owner(request: Request, party_id: str):
-    auth_header = request.cookies["session"]
+async def is_owner(request: Request, party_id: str) -> bool:
+    """Dependency to check if the user is the owner of the party."""
     userid = request.session["user_id"]
     e = await get_party_instance(party_id)
     if not e:
@@ -58,8 +58,8 @@ async def is_owner(request: Request, party_id: str):
 
 
 @router.post("/party", status_code=status.HTTP_201_CREATED)
-async def create_party(request: Request, payload: Party):
-    auth_header = request.cookies["session"]
+async def create_party(request: Request, payload: Party) -> JSONResponse:
+    """API endpoint to create a party"""
     userid = request.session["user_id"]
     party_info = PartyInfoModel(
         **payload.model_dump(), owner=userid, start=round(time.time())
@@ -78,7 +78,8 @@ async def create_party(request: Request, payload: Party):
     "/party/{party_id}",
     status_code=status.HTTP_200_OK,
 )
-async def get_party(request: Request, party_id: str):
+async def get_party(request: Request, party_id: str) -> JSONResponse:
+    """API endpoint to get a party by id"""
     e = await get_party_instance(party_id)
     if not e:
         raise HTTPException(
@@ -94,7 +95,8 @@ async def get_party(request: Request, party_id: str):
     status_code=status.HTTP_204_NO_CONTENT,
     dependencies=[Depends(is_owner)],
 )
-async def update_party(request: Request, party_id: str, payload: UpdateParty):
+async def update_party(request: Request, party_id: str, payload: UpdateParty) -> None:
+    """API endpoint to update a party by id"""
     converted = payload.model_dump(exclude_unset=True)
 
     e = await update_party_instance(
@@ -113,7 +115,8 @@ async def update_party(request: Request, party_id: str, payload: UpdateParty):
     status_code=status.HTTP_204_NO_CONTENT,
     dependencies=[Depends(is_owner)],
 )
-async def delete_party(request: Request, party_id: str):
+async def delete_party(request: Request, party_id: str) -> None:
+    """API endpoint to delete a party by id"""
     e = await delete_party_instance(party_id)
     if not e:
         raise HTTPException(
@@ -123,7 +126,8 @@ async def delete_party(request: Request, party_id: str):
 
 
 @router.put("/party/{party_id}/users", status_code=status.HTTP_204_NO_CONTENT)
-async def add_user_to_party(request: Request, party_id: str):
+async def add_user_to_party(request: Request, party_id: str) -> None:
+    """API endpoint to add a user to a party"""
     try:
         userid = request.session["user_id"]
         _id = ObjectId(userid)

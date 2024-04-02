@@ -20,17 +20,16 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 
 
 @router.get("/login")
-async def login():
+async def login() -> RedirectResponse:
+    """Login API endpoint for spotify authentication"""
     return RedirectResponse(
         f"https://accounts.spotify.com/authorize?response_type=code&client_id={SPOTIFY_CLIENT_ID}&scope=user-read-playback-state+user-modify-playback-state+user-read-currently-playing+user-library-read+user-top-read+user-library-read+user-follow-read+user-read-private+playlist-read-private+user-read-currently-playing+user-read-recently-played&redirect_uri={urllib.parse.quote_plus(REDIRECT_URL)}"
     )
 
 
-# playlist-read-private user-modify-playback-state user-library-read user-follow-read user-read-playback-state user-read-currently-playing user-read-recently-played user-top-read user-read-private
-
-
 @router.get(f"/callback/")
-async def callback(request: Request, code: str):
+async def callback(request: Request, code: str) -> JSONResponse | RedirectResponse:
+    """Callback API endpoint for spotify authentication"""
     auth_header = base64.b64encode(
         six.text_type(SPOTIFY_CLIENT_ID + ":" + SPOTIFY_CLIENT_SECRET).encode("ascii")
     )
@@ -70,7 +69,8 @@ async def callback(request: Request, code: str):
 
 
 @router.get("/me")
-async def me(request: Request):
+async def me(request: Request) -> dict:
+    """API endpoint to get user data from currently authenticated Spotify user"""
     try:
         token = request.cookies.get("session")
         if token:
@@ -83,7 +83,3 @@ async def me(request: Request):
             return {"error": "no session cookie found"}
     except Exception:
         return {"error": "invalid/expired token"}
-
-
-if __name__ == "__main__":
-    os.system("uvicorn main:router --reload")

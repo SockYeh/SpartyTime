@@ -26,19 +26,14 @@ async def close_db():
 
 
 def convert_to_bson_id(bson_id: str) -> ObjectId:
-
+    """Converts a string to a BSON object id."""
     return ObjectId(bson_id)
 
 
 def switch_id_to_pydantic(data: dict) -> dict:
+    """Switches the id key to _id for pydantic models."""
     data["id"] = data["_id"]
     del data["_id"]
-    return data
-
-
-def switch_id_to_mongo(data: dict) -> dict:
-    data["_id"] = data["id"]
-    del data["id"]
     return data
 
 
@@ -62,7 +57,8 @@ class UserModel(pydantic.BaseModel):
     model_config = {"arbitrary_types_allowed": True}
 
 
-async def create_user_db():
+async def create_user_db() -> None:
+    """Creates the user database and collection."""
     await client.drop_database("users")  # pyright: ignore
     auth_validator = {
         "$jsonSchema": {
@@ -143,7 +139,8 @@ class PartyModel(pydantic.BaseModel):
     model_config = {"arbitrary_types_allowed": True}
 
 
-async def create_party_db():
+async def create_party_db() -> None:
+    """Creates the party database and collection."""
     await client.drop_database("parties")  # pyright: ignore
 
     party_validator = {
@@ -240,6 +237,7 @@ async def create_party_db():
 
 
 async def get_user_by_id(_id: str, is_spotify_id=False) -> UserModel:
+    """Gets a user by their id."""
     query = {"spotify_id": _id} if is_spotify_id else {"_id": convert_to_bson_id(_id)}
     op = await users_db.auth_details.find_one(query)
 
@@ -250,6 +248,7 @@ async def get_user_by_id(_id: str, is_spotify_id=False) -> UserModel:
 
 
 async def create_user(spotify_dict: dict, spotify_session_dict: dict) -> bool:
+    """Creates a user in the database."""
     try:
         username = spotify_dict["display_name"]
         user_id = spotify_dict["id"]
@@ -267,6 +266,7 @@ async def create_user(spotify_dict: dict, spotify_session_dict: dict) -> bool:
 
 
 async def update_session(user_id: str, session_data: dict) -> bool:
+    """Updates the session data of a user."""
     try:
         e = await users_db.auth_details.update_one(
             {"_id": convert_to_bson_id(user_id)},
@@ -278,6 +278,7 @@ async def update_session(user_id: str, session_data: dict) -> bool:
 
 
 async def update_user(user_id: str, user_data: dict) -> bool:
+    """Updates the user data of a user."""
     try:
         e = await users_db.auth_details.update_one(
             {"_id": convert_to_bson_id(user_id)},
@@ -289,6 +290,7 @@ async def update_user(user_id: str, user_data: dict) -> bool:
 
 
 async def get_user_by_access_token(access_token: str):
+    """Gets a user by their access token."""
     query = {"spotify_session_data.access_token": access_token}
     op = await users_db.auth_details.find_one(query)
 
@@ -298,12 +300,14 @@ async def get_user_by_access_token(access_token: str):
     return UserModel(**op)
 
 
-async def create_party_instance(party: dict):
+async def create_party_instance(party: dict) -> ObjectId:
+    """Creates a party instance in the database."""
     e = await parties_db.party_details.insert_one(party)
     return e.inserted_id
 
 
 async def get_party_instance(party_id: str) -> PartyModel:
+    """Gets a party instance by its id."""
     query = {"_id": convert_to_bson_id(party_id)}
     op = await parties_db.party_details.find_one(query)
 
@@ -314,6 +318,7 @@ async def get_party_instance(party_id: str) -> PartyModel:
 
 
 async def get_party_instance_by_owner(owner_id: str) -> PartyModel:
+    """Gets a party instance by its owner."""
     query = {"party_info.owner": owner_id}
     op = await parties_db.party_details.find_one(query)
 
@@ -326,6 +331,7 @@ async def get_party_instance_by_owner(owner_id: str) -> PartyModel:
 async def update_party_instance(
     party_id: str, party: dict, method: str = "$set"
 ) -> bool:
+    """Updates a party instance in the database."""
     try:
         del party["id"]
     except KeyError:
@@ -337,6 +343,7 @@ async def update_party_instance(
 
 
 async def remove_party_member(party_id: str, user_id: str) -> bool:
+    """Removes a user from a party."""
     await parties_db.party_details.update_one(
         {"_id": convert_to_bson_id(party_id)}, {"$pull": {"party_info.users": user_id}}
     )
@@ -347,28 +354,33 @@ async def remove_party_member(party_id: str, user_id: str) -> bool:
 
 
 async def delete_party_instance(party_id: str) -> bool:
+    """Deletes a party instance from the database."""
     await parties_db.party_details.delete_one({"_id": convert_to_bson_id(party_id)})
     return True
 
 
 async def get_parties(filter_dict: dict = {}) -> list[PartyModel]:
+    """Gets all parties from the database."""
     op = parties_db.party_details.find(filter_dict)
     op = [switch_id_to_pydantic(i) async for i in op]
     return [PartyModel(**i) for i in op]
 
 
 async def delete_parties() -> bool:
+    """Deletes all parties from the database."""
     await parties_db.party_details.delete_many({})
     return True
 
 
 async def get_users(filter_dict: dict = {}) -> list:
+    """Gets all users from the database."""
     op = users_db.auth_details.find(filter_dict)
     op = [switch_id_to_pydantic(i) async for i in op]
     return [UserModel(**i) for i in op]
 
 
 async def aggregate_party(filter_dict: list) -> list:
+    """Aggregates parties based on a filter."""
     op = parties_db.party_details.aggregate(filter_dict)
     op = [switch_id_to_pydantic(i) async for i in op]
     return [PartyModel(**i) for i in op]

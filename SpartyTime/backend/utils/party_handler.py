@@ -24,6 +24,7 @@ currently_listening = {}
 
 @repeat_every(seconds=5, raise_exceptions=True)
 async def check_for_inactivity():
+    """Check for inactivity in parties and delete them if inactive for more than 150 seconds (2.5 mins)."""
     for party_id in currently_listening.keys():
         e = await get_party_instance(party_id)
         if not e:
@@ -46,6 +47,7 @@ async def check_for_inactivity():
 
 @repeat_every(seconds=5, raise_exceptions=True)
 async def add_new_parties():
+    """Add new parties to the currently listening dictionary."""
     parties = await get_parties()
 
     for party in parties:
@@ -55,6 +57,7 @@ async def add_new_parties():
 
 @repeat_every(seconds=5, raise_exceptions=True)
 async def update_party_details():
+    """Update the party details in the database."""
     for party_id in currently_listening.keys():
         try:
             party = await get_party_instance(party_id)
@@ -85,6 +88,7 @@ async def update_party_details():
 
 @repeat_every(seconds=5, raise_exceptions=True)
 async def update_playback():
+    """Update the playback of the parties in the currently listening dictionary."""
     for party_id, users in currently_listening.items():
         party = await get_party_instance(party_id)
         if not party:
@@ -119,6 +123,7 @@ async def update_playback():
 
 @repeat_every(seconds=300, raise_exceptions=True)
 async def update_party_genre():
+    """Update the party genres in the database."""
     for party_id in currently_listening.keys():
         party = await get_party_instance(party_id)
         if not party:
