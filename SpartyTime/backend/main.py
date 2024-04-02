@@ -38,7 +38,7 @@ async def lifespan(app: FastAPI):
     await update_party_genre()
     yield
 
-    # await delete_parties()
+    await delete_parties()
     await close_db()
     await close_session()  # pyright: ignore
 
