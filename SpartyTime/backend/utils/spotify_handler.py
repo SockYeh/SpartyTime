@@ -43,7 +43,7 @@ def get_headers(access_token: str) -> dict:
     """Get the headers for the Spotify API requests."""
     return {
         "Authorization": f"Bearer {access_token}",
-        # "Content-Type": "application/x-www-form-urlencoded",
+        "Content-Type": "application/x-www-form-urlencoded",
     }
 
 
