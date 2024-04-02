@@ -1,21 +1,29 @@
+import logging
 import time
 from typing import Optional
 
 import pydantic
-from bson.objectid import ObjectId
 from bson.errors import InvalidId
+from bson.objectid import ObjectId
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
+
 from ..utils.database_handler import (
+    PartyInfoModel,
     create_party_instance,
     delete_party_instance,
     get_party_instance,
     update_party_instance,
-    PartyInfoModel,
 )
+from ..utils.logger_handler import LoggerFormatter
 from ..utils.session_manager import validate_session
 
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
+stream_handler = logging.StreamHandler()
+stream_handler.setFormatter(LoggerFormatter())
+logger.addHandler(stream_handler)
 
 router = APIRouter(
     prefix="/parties", tags=["parties"], dependencies=[Depends(validate_session)]
@@ -29,6 +37,7 @@ class Party(BaseModel):
     type: str
 
     @pydantic.field_validator("type")
+    @classmethod
     def check_type(cls, value):
         if value not in ["public", "unlisted", "private"]:
             raise ValueError(f"{value} is not a valid party type. ")
@@ -71,6 +80,7 @@ async def create_party(request: Request, payload: Party) -> JSONResponse:
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"Party creation failed. {str(e)}",
         )
+    logger.info(f"Party {e} created")
     return JSONResponse(content={"id": str(e)})
 
 
@@ -87,6 +97,9 @@ async def get_party(request: Request, party_id: str) -> JSONResponse:
         )
     opd = e.model_dump()
     opd["id"] = str(e.id)
+    opd["party_info"]["owner"] = str(opd["party_info"]["owner"])
+    opd["party_info"]["users"] = [str(i) for i in opd["party_info"]["users"]]
+
     return JSONResponse(content={"party": opd})
 
 
@@ -123,6 +136,7 @@ async def delete_party(request: Request, party_id: str) -> None:
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"Party deletion failed. {str(e)}",
         )
+    logger.info(f"Party {party_id} deleted.")
 
 
 @router.put("/party/{party_id}/users", status_code=status.HTTP_204_NO_CONTENT)

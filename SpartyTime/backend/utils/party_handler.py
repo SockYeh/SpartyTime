@@ -1,7 +1,9 @@
-import time, pydantic
+import logging
+import time
 import traceback
 
 from fastapi_utils.tasks import repeat_every
+
 from ..utils.database_handler import (
     PartyDataModel,
     delete_party_instance,
@@ -11,6 +13,7 @@ from ..utils.database_handler import (
     remove_party_member,
     update_party_instance,
 )
+from ..utils.logger_handler import LoggerFormatter
 from ..utils.spotify_handler import (
     get_currently_playing,
     get_queue,
@@ -20,6 +23,12 @@ from ..utils.spotify_handler import (
 )
 
 currently_listening = {}
+
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
+stream_handler = logging.StreamHandler()
+stream_handler.setFormatter(LoggerFormatter())
+logger.addHandler(stream_handler)
 
 
 @repeat_every(seconds=5, raise_exceptions=True)
@@ -43,6 +52,7 @@ async def check_for_inactivity():
             continue
         except TypeError:
             currently_listening.pop(party_id)
+            logger.info(f"Party {party_id} has been deleted due to inactivity.")
 
 
 @repeat_every(seconds=5, raise_exceptions=True)
@@ -95,6 +105,9 @@ async def update_playback():
             currently_listening.pop(party_id)
         if not party.party_data:
             continue
+        owner = await get_user_by_id(party.party_info.owner)
+        owner_token = owner.spotify_session_data.access_token
+        owner_currently_playing = await get_currently_playing(owner_token)
 
         for user in users:
             if party.party_info.owner == str(user):
@@ -106,8 +119,11 @@ async def update_playback():
 
             if not user_currently_playing["is_playing"]:
                 await remove_party_member(party_id, str(user.id))
-
                 continue
+
+            if not owner_currently_playing["is_playing"]:
+                continue
+
             if user_currently_playing["uri"] != party.party_data.current_song[
                 "uri"
             ] or not user_currently_playing["progress_ms"] in range(

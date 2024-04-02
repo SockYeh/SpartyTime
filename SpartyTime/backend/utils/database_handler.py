@@ -1,12 +1,10 @@
 import os
 
+import pydantic
+from bson.objectid import ObjectId
 from dotenv import find_dotenv, load_dotenv
 from motor.motor_asyncio import AsyncIOMotorClient
 from pymongo import errors
-from bson.errors import InvalidId
-from bson.objectid import ObjectId
-import pydantic
-
 
 load_dotenv(find_dotenv())
 
@@ -115,6 +113,7 @@ class PartyInfoModel(pydantic.BaseModel):
     type: str
 
     @pydantic.field_validator("type")
+    @classmethod
     def check_type(cls, value):
         if value not in ["public", "unlisted", "private"]:
             raise ValueError(f"{value} is not a valid party type. ")
@@ -268,7 +267,7 @@ async def create_user(spotify_dict: dict, spotify_session_dict: dict) -> bool:
 async def update_session(user_id: str, session_data: dict) -> bool:
     """Updates the session data of a user."""
     try:
-        e = await users_db.auth_details.update_one(
+        await users_db.auth_details.update_one(
             {"_id": convert_to_bson_id(user_id)},
             {"$set": {"spotify_session_data": session_data}},
         )
@@ -280,7 +279,7 @@ async def update_session(user_id: str, session_data: dict) -> bool:
 async def update_user(user_id: str, user_data: dict) -> bool:
     """Updates the user data of a user."""
     try:
-        e = await users_db.auth_details.update_one(
+        await users_db.auth_details.update_one(
             {"_id": convert_to_bson_id(user_id)},
             {"$set": user_data},
         )

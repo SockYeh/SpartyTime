@@ -1,13 +1,16 @@
 import base64
+import logging
 import os
 import urllib.parse
 
 import aiohttp
 import six
-from dotenv import load_dotenv, find_dotenv
+from dotenv import find_dotenv, load_dotenv
 from fastapi import APIRouter, Request, status
 from fastapi.responses import JSONResponse, RedirectResponse
+
 from ..utils.database_handler import create_user, get_user_by_id
+from ..utils.logger_handler import LoggerFormatter
 from ..utils.spotify_handler import get_spotify_details, update_user_genre
 
 load_dotenv(find_dotenv())
@@ -15,6 +18,13 @@ load_dotenv(find_dotenv())
 SPOTIFY_CLIENT_ID = os.environ["SPOTIFY_CLIENT_ID"]
 SPOTIFY_CLIENT_SECRET = os.environ["SPOTIFY_CLIENT_SECRET"]
 REDIRECT_URL = os.environ["REDIRECT_URL"]
+
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
+stream_handler = logging.StreamHandler()
+stream_handler.setFormatter(LoggerFormatter())
+logger.addHandler(stream_handler)
+
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -28,7 +38,7 @@ async def login() -> RedirectResponse:
 
 
 @router.get(f"/callback/")
-async def callback(request: Request, code: str) -> JSONResponse | RedirectResponse:
+async def callback(request: Request, code: str):
     """Callback API endpoint for spotify authentication"""
     auth_header = base64.b64encode(
         six.text_type(SPOTIFY_CLIENT_ID + ":" + SPOTIFY_CLIENT_SECRET).encode("ascii")
@@ -60,6 +70,7 @@ async def callback(request: Request, code: str) -> JSONResponse | RedirectRespon
     if not await get_user_by_id(user_data["id"], is_spotify_id=True):
         await create_user(user_data, dat)
         resp.status_code = status.HTTP_201_CREATED
+        logger.info(f"User {user_data['id']} created")
 
     user = await get_user_by_id(user_data["id"], is_spotify_id=True)
 

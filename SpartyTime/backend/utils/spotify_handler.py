@@ -1,20 +1,20 @@
 import base64
-import pydantic
 import os
 import traceback
 
 import aiohttp
+import pydantic
 import six
-from dotenv import load_dotenv, find_dotenv
+from dotenv import find_dotenv, load_dotenv
 from pydantic import BaseModel
 
 from .database_handler import (
+    SpotifySessionModel,
     get_user_by_access_token,
     get_user_by_id,
-    update_session,
     get_users,
+    update_session,
     update_user,
-    SpotifySessionModel,
 )
 
 load_dotenv(find_dotenv())
@@ -43,7 +43,7 @@ def get_headers(access_token: str) -> dict:
     """Get the headers for the Spotify API requests."""
     return {
         "Authorization": f"Bearer {access_token}",
-        "Content-Type": "application/x-www-form-urlencoded",
+        # "Content-Type": "application/x-www-form-urlencoded",
     }
 
 
@@ -185,8 +185,9 @@ async def get_currently_playing(access_token: str) -> dict:
                 return await get_currently_playing(access_token)
             except Exception:
                 raise SpotifyError(traceback.format_exc())
+        if resp.status == 204:
+            return {"is_playing": False}
         resp_json = await resp.json()
-
         return CurrentlyPlaying(
             is_playing=resp_json["is_playing"],
             progress_ms=resp_json["progress_ms"],

@@ -1,23 +1,24 @@
-import uvicorn, os
-from fastapi import FastAPI
+import os
 from contextlib import asynccontextmanager
-from dotenv import load_dotenv, find_dotenv
+
+from dotenv import find_dotenv, load_dotenv
+from fastapi import FastAPI
 from starlette.middleware.sessions import SessionMiddleware
 
-from .routes import auth, parties, discovery
+from .routes import auth, discovery, parties
 from .utils.database_handler import (
     close_db,
-    delete_parties,
-    open_db,
     create_party_db,
     create_user_db,
+    delete_parties,
+    open_db,
 )
 from .utils.party_handler import (
     add_new_parties,
     check_for_inactivity,
     update_party_details,
-    update_playback,
     update_party_genre,
+    update_playback,
 )
 from .utils.spotify_handler import close_session, create_session, update_user_genre
 
@@ -37,7 +38,7 @@ async def lifespan(app: FastAPI):
     await update_party_genre()
     yield
 
-    await delete_parties()
+    # await delete_parties()
     await close_db()
     await close_session()  # pyright: ignore
 
