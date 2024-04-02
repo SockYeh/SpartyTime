@@ -5,7 +5,7 @@ import traceback
 
 import aiohttp
 import six
-from dotenv import load_dotenv
+from dotenv import load_dotenv, find_dotenv
 from pydantic import BaseModel
 
 from .database_handler import (
@@ -17,7 +17,7 @@ from .database_handler import (
     SpotifySessionModel,
 )
 
-load_dotenv()
+load_dotenv(find_dotenv())
 
 SPOTIFY_CLIENT_ID = os.environ["SPOTIFY_CLIENT_ID"]
 SPOTIFY_CLIENT_SECRET = os.environ["SPOTIFY_CLIENT_SECRET"]

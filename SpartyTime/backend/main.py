@@ -5,7 +5,13 @@ from dotenv import load_dotenv, find_dotenv
 from starlette.middleware.sessions import SessionMiddleware
 
 from .routes import auth, parties, discovery
-from .utils.database_handler import close_db, delete_parties, open_db
+from .utils.database_handler import (
+    close_db,
+    delete_parties,
+    open_db,
+    create_party_db,
+    create_user_db,
+)
 from .utils.party_handler import (
     add_new_parties,
     check_for_inactivity,
@@ -37,13 +43,16 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(lifespan=lifespan)
-app.add_middleware(SessionMiddleware, secret_key=os.environ["secret"])
+app.add_middleware(SessionMiddleware, secret_key=os.environ["SECRET"])
 
 routers = [auth.router, parties.router, discovery.router]
 for router in routers:
     app.include_router(router)
 
 
-if __name__ == "__main__":
+@app.get("/")
+async def create_dbs():
+    await create_user_db()
+    await create_party_db()
 
-    uvicorn.run(app="main:app", reload=True)
+    return {"message": "Databases created"}

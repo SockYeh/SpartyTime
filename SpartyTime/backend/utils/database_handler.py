@@ -10,8 +10,7 @@ import pydantic
 
 load_dotenv(find_dotenv())
 
-password = os.getenv("mongodb_password")
-connection_str = f"mongodb+srv://SockYeh:{password}@spartytime.ym3qwwl.mongodb.net/?retryWrites=true&w=majority&authSource=admin"
+connection_str = os.environ["MONGODB_CONNECTION_STR"]
 client = None
 
 
