@@ -4,13 +4,13 @@ import urllib.parse
 
 import aiohttp
 import six
-from dotenv import load_dotenv
+from dotenv import load_dotenv, find_dotenv
 from fastapi import APIRouter, Request, status
 from fastapi.responses import JSONResponse, RedirectResponse
 from ..utils.database_handler import create_user, get_user_by_id
 from ..utils.spotify_handler import get_spotify_details, update_user_genre
 
-load_dotenv()
+load_dotenv(find_dotenv())
 
 SPOTIFY_CLIENT_ID = os.environ["SPOTIFY_CLIENT_ID"]
 SPOTIFY_CLIENT_SECRET = os.environ["SPOTIFY_CLIENT_SECRET"]
