@@ -1,5 +1,5 @@
 # SpartyTime
-SpartyTime is a replacement of the Spotify's Jam system made using FastAPI to make listening with friends on Spotify easier! SpartyTime uses the Spotify OAuth to connect the users. Users can create parties and invite their friends to join the party.
+SpartyTime is a replacement of the Spotify's Jam system made using FastAPI to make listening with friends on Spotify easier! SpartyTime uses the [Spotify OAuth](https://developer.spotify.com/documentation/web-api/) to connect the users. Users can create parties and invite their friends to join the party.
 
 ## Features
 - Party Queue and History are available - not available using Spotify's jam.
@@ -7,6 +7,7 @@ SpartyTime is a replacement of the Spotify's Jam system made using FastAPI to ma
 
 ## Requirements
 - Python 3.10+
+- Spotify Premium
 
 ## Installation
 Clone the repository:
@@ -19,7 +20,7 @@ To install necessary dependencies, run the following commands:
 pip install -r requirements.txt
 ```
 ## Setup
-- Create a MongoDB database and copy the connection string.
+- Create a [MongoDB](https://www.mongodb.com/) database and copy the connection string.
 - Create a Spotify Developer Application with a callback url and copy the Client ID and Client Secret.
 - Create a secret key.
 - Add them to the [.env](.env) file and save.
@@ -29,6 +30,7 @@ To run the code use the command
 ```python
 uvicorn spartytime.backend.main:app --reload
 ```
+To create the database schema, make a request to the root `/` endpoint.
 
 ## Contributing
 
