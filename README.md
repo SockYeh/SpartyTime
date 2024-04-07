@@ -4,6 +4,8 @@ SpartyTime is a replacement of the Spotify's Jam system made using FastAPI to ma
 ## Features
 - Party Queue and History are available - not available using Spotify's jam.
 - Genre matching to allow users to join others with matching music taste!
+- Website doesn't need to stay open!
+- Works on mobile too.
 
 ## Requirements
 - Python 3.10+
