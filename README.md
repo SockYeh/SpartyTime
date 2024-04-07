@@ -2,7 +2,7 @@
 SpartyTime is a replacement of the Spotify's Jam system made using FastAPI to make listening with friends on Spotify easier! SpartyTime uses the [Spotify OAuth](https://developer.spotify.com/documentation/web-api/) to connect the users. Users can create parties and invite their friends to join the party.
 
 ## Features
-- Party Queue and History are available - not available using Spotify's jam.
+- Party Queue and History is available.
 - Genre matching to allow users to join others with matching music taste!
 - Website doesn't need to stay open!
 - Works on mobile too.
