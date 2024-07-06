@@ -7,11 +7,11 @@ from fastapi_utils.tasks import repeat_every
 from ..utils.database_handler import (
     PartyDataModel,
     delete_party_instance,
-    get_parties,
     get_party_instance,
     get_user_by_id,
     remove_party_member,
     update_party_instance,
+    get_parties,
 )
 from ..utils.logger_handler import LoggerFormatter
 from ..utils.spotify_handler import (

@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html data-bs-theme="dark" lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, shrink-to-fit=no">
+    <title>SpartyTime</title>
+    <link rel="stylesheet" href="{{ url_for('static', path='/bootstrap/css/bootstrap.min.css') }}">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Noto+Sans+Inscriptional+Pahlavi&amp;display=swap">
+    <link rel="stylesheet" href="{{ url_for('static', path='/css/bs-theme-overrides.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', path='/css/Articles-Badges-images.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', path='/css/Button-Ripple-Effect-Animation-Wave-Pulse.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', path='/css/Clean-Button-Scale-Hover-Effect.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', path='/css/Footer-Dark-icons.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', path='/css/Navbar-Right-Links-Dark-icons.css') }}">
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+</head>
+<script>
+    function joinParty() {
+            console.log("http://localhost:8000/party/" + window.location.href + '/users');
+
+            $.ajax({
+                url: ("http://localhost:8000/parties/party/" + window.location.href.split("/")[4] + "/users"),
+                type: "PUT",
+                xhrFields: {
+                    withCredentials: true
+                },
+                
+                success: function (data) {
+                    window.location.reload()
+                },
+                error: function (data) {
+                    console.log(data);
+                    $('#login-plij').modal('show');
+                },
+    
+            });
+        }
+    function leaveParty() {
+        console.log("http://localhost:8000/party/" + window.location.href + '/users');
+
+        $.ajax({
+            url: ("http://localhost:8000/parties/party/" + window.location.href.split("/")[4] + "/users"),
+            type: "DELETE",
+            xhrFields: {
+                withCredentials: true
+            },
+            
+            success: function (data) {
+                window.location.reload()
+            },
+            error: function (data) {
+                console.log(data);
+                $('#login-plij').modal('show');
+            },
+
+        });
+    
+    }
+</script>
+<body class="justify-content-center">
+    <nav class="navbar navbar-expand-md bg-dark py-3 border rounded" data-bs-theme="dark">
+        <div class="container"><a class="navbar-brand d-flex align-items-center" href="/"><span class="bs-icon-sm bs-icon-rounded bs-icon-primary d-flex justify-content-center align-items-center me-2 bs-icon"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" fill="currentColor" viewBox="0 0 16 16" class="bi bi-bezier">
+                        <path fill-rule="evenodd" d="M0 10.5A1.5 1.5 0 0 1 1.5 9h1A1.5 1.5 0 0 1 4 10.5v1A1.5 1.5 0 0 1 2.5 13h-1A1.5 1.5 0 0 1 0 11.5zm1.5-.5a.5.5 0 0 0-.5.5v1a.5.5 0 0 0 .5.5h1a.5.5 0 0 0 .5-.5v-1a.5.5 0 0 0-.5-.5zm10.5.5A1.5 1.5 0 0 1 13.5 9h1a1.5 1.5 0 0 1 1.5 1.5v1a1.5 1.5 0 0 1-1.5 1.5h-1a1.5 1.5 0 0 1-1.5-1.5zm1.5-.5a.5.5 0 0 0-.5.5v1a.5.5 0 0 0 .5.5h1a.5.5 0 0 0 .5-.5v-1a.5.5 0 0 0-.5-.5zM6 4.5A1.5 1.5 0 0 1 7.5 3h1A1.5 1.5 0 0 1 10 4.5v1A1.5 1.5 0 0 1 8.5 7h-1A1.5 1.5 0 0 1 6 5.5zM7.5 4a.5.5 0 0 0-.5.5v1a.5.5 0 0 0 .5.5h1a.5.5 0 0 0 .5-.5v-1a.5.5 0 0 0-.5-.5z"></path>
+                        <path d="M6 4.5H1.866a1 1 0 1 0 0 1h2.668A6.517 6.517 0 0 0 1.814 9H2.5c.123 0 .244.015.358.043a5.517 5.517 0 0 1 3.185-3.185A1.503 1.503 0 0 1 6 5.5zm3.957 1.358A1.5 1.5 0 0 0 10 5.5v-1h4.134a1 1 0 1 1 0 1h-2.668a6.517 6.517 0 0 1 2.72 3.5H13.5c-.123 0-.243.015-.358.043a5.517 5.517 0 0 0-3.185-3.185z"></path>
+                    </svg></span><span>SpartyTime</span></a><button data-bs-toggle="collapse" class="navbar-toggler" data-bs-target="#navcol-5"><span class="visually-hidden">Toggle navigation</span><span class="navbar-toggler-icon"></span></button>
+            <div class="collapse navbar-collapse" id="navcol-5">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item"><a class="nav-link active" href="/">Home</a></li>
+                    <li class="nav-item"><a class="nav-link" href="/#party">Party</a></li>
+                    <li class="nav-item"><a class="nav-link" href="/#discover">Discover</a></li>
+                </ul>
+            </div><a class="btn btn-primary" role="button" href="#" style="background: rgb(144,238,144);color: rgb(0,0,0);">Account</a>
+        </div>
+    </nav>
+    <div id="party-header" class="justify-content-center mx-auto">
+        <section class="py-4 py-xl-5 mx-auto align-items-center justify-content-center" style="border-color: rgb(33,37,41);background: #212529;">
+            <div class="container rounded align-items-center" style="background: #2e3237;padding-top: 12px;padding-bottom: 12px;">
+                <div class="text-dark border rounded border-0 border-light d-flex flex-column justify-content-between align-items-center flex-lg-row p-4 p-lg-5" data-bs-theme="dark" style="background: rgb(33,37,41);">
+                    <div class="col-4">
+                        <h2 class="fw-bold" style="color: rgb(255,255,255);">{{party.party_info.party_name}}</h2>
+                        <p class="mb-0" style="color: rgb(255,255,255);">{{party.party_info.party_description}}</p> 
+                        <div class="justify-content-center">
+                            {% for genre in party.party_info.genres %}
+                                <span class="badge rounded-pill" style="background: rgb(77,87,95);">{{genre}}</span>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    <div class="col-4 right-align">
+                        {% for pfp in pfps%}
+                            <img class="rounded-circle" width="50" height="50" src="{{pfp}}">
+                        {% endfor %}
+                    </div>
+                    {% if is_member%}
+                        <button class="btn btn-primary btn-lg" type="submit" onclick="leaveParty()">Leave</button>
+
+                    {% else %}
+                        <button class="btn btn-primary btn-lg" type="submit" onclick="joinParty()">Join</button>
+
+                    {% endif %}
+
+                </div>
+            </div>
+        </section>
+    </div>
+    <hr class="border border">
+    <div id="party-info-footer">
+        <h1 class="text-center py-3 border-primary" style="margin: 0px 0px 16px;border-color: var(--bs-primary);">Party Info</h1>
+        <div class="container rounded align-items-center" style="background: #2e3237;padding-top: 12px;padding-bottom: 12px;">
+            <div class="text-dark border rounded border-0 border-light d-flex flex-column justify-content-between align-items-center flex-lg-row p-4 p-lg-5 mx-auto" data-bs-theme="dark" style="background: rgb(33,37,41);">
+                <img width=128 height= 128 src="{{party.party_data.current_song['album']['image']}}">
+                <div class="col-5">
+                    <a class="fw-bold" style="font-size: 32px;color: rgb(255,255,255);">{{party.party_data.current_song['name']}}</a>
+                    <p class="mb-0" style="font-size: 32px;color: rgb(255,255,255);">{{party.party_data.current_song['artists'][0]['name']}}</p>
+                </div>
+            </div>
+            <div class="row" style="padding: 10px;">
+                <div class="border rounded border-0 border-light d-flex flex-column align-items-center flex-lg-row col ms-sm-1 justify-content-center" data-bs-theme="dark" style="background: rgb(33,37,41); padding:10px">
+                    <h1 class="text-center py-3 border-primary" style="border-color: var(--bs-primary);">History</h1>
+                    <hr class="border border">
+                    <ul class="list-group">
+                        {% for history in party.party_data.history %}
+                            <ui class="list-group-item" style="background: rgb(33,37,41);border-color: rgb(33,37,41);">
+                                <div>
+                                    <img id="party-img-{{party.id}}" width="64" height="64" src="{{history.album.image}}">
+                                    <div class="flex-wrap">
+                                        <h2 id="party-song-{{party.id}}" class="fw-bold mb-2" style="color: rgb(255,255,255);font-size: 18px;">{{history.name}}</h2>
+                                        <p id="party-artist-{{party.id}}" class="mb-0" style="color: rgb(255,255,255);font-size: 12px;">{{history.artists[0].name}}</p>
+                                    </div>
+                                </div>
+                            </ui>
+                        {% endfor %}
+                    </ul>
+                </div>
+                <div class="border rounded border-0 border-light d-flex flex-column align-items-center flex-lg-row col ms-sm-1 justify-content-center" data-bs-theme="dark" style="background: rgb(33,37,41); padding:10px">
+                    <h1 class="text-center py-3 border-primary" style="border-color: var(--bs-primary);">Queue</h1>
+                    <hr class="border border">
+                    <ul class="list-group">
+                        {% for queue in party.party_data.queue %}
+                            <ui class="list-group-item" style="background: rgb(33,37,41);border-color: rgb(33,37,41);">
+                                <div>
+                                    <img id="party-img-{{party.id}}" width="64" height="64" src="{{queue.album.image}}">
+                                    <div class="flex-wrap">
+                                        <h2 id="party-song-{{party.id}}" class="fw-bold mb-2" style="color: rgb(255,255,255);font-size: 18px;">{{queue.name}}</h2>
+                                        <p id="party-artist-{{party.id}}" class="mb-0" style="color: rgb(255,255,255);font-size: 12px;">{{queue.artists[0].name}}</p>
+                                    </div>
+                                </div>
+                            </ui>
+                        {% endfor %}
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+    <footer class="text-center bg-dark">
+        <div class="container text-white py-4 py-lg-5">
+            <ul class="list-inline">
+                <li class="list-inline-item me-4"><a class="link-light" href="https://github.com/SockYeh/SpartyTime/blob/main/README.md">About</a></li>
+                <li class="list-inline-item me-4"><a class="link-light" href="https://github.com/SockYeh/SpartyTime/">Source Code</a></li>
+                <li class="list-inline-item"><a class="link-light" href="https://github.com/SockYeh/SpartyTime/blob/main/LICENSE">License</a></li>
+            </ul>
+            
+            <p class="text-muted mb-0">Copyright © 2024 SpartyTime</p>
+        </div>
+    </footer>
+    <script src="{{ url_for('static', path='/bootstrap/js/bootstrap.min.js') }}"></script>
+    <script src="{{ url_for('static', path='/js/Button-Ripple-Effect-Animation-Wave-Pulse-button-ripple-effect.js') }}"></script>
+</body>
+
+</html>

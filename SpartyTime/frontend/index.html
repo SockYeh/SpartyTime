@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html data-bs-theme="dark" lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, shrink-to-fit=no">
+    <title>SpartyTime</title>
+    <link rel="stylesheet" href="{{ url_for('static', path='/bootstrap/css/bootstrap.min.css') }}">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Noto+Sans+Inscriptional+Pahlavi&amp;display=swap">
+    <link rel="stylesheet" href="{{ url_for('static', path='/css/bs-theme-overrides.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', path='/css/Articles-Badges-images.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', path='/css/Button-Ripple-Effect-Animation-Wave-Pulse.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', path='/css/Clean-Button-Scale-Hover-Effect.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', path='/css/Footer-Dark-icons.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', path='/css/Navbar-Right-Links-Dark-icons.css') }}">
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+    <script>
+        $(document).ready(function () {
+                $('#login-plij').modal({ show: false})
+                $('#bad-invite').modal({ show: false})
+                $('#create-party').modal({ show: false})
+
+                $.ajax({
+                    url: "http://localhost:8000/auth/me",
+                    type: "GET",
+                    xhrFields: {
+                        withCredentials: true
+                    },
+                    crossDomain: true,
+                    success: function (data) {
+                        window.data = data;
+                        document.getElementById('account-btn').textContent = data.display_name;
+                        document.getElementById('account-btn').classList.add('disabled');
+    
+                    },
+                    error: function (data) {
+                        document.getElementById('account-btn').textContent = 'Login';
+                        document.getElementById('account-btn').classList.remove('disabled');   
+                    },
+    
+                });
+            }); 
+        // when the button is clicked, this function is invoked where it gets the parent form's id and redirects to that party's page
+        function infoParty(id) {
+            window.location.href = "/party/" + id;
+        }
+        function joinParty(id) {
+            console.log(id);
+            console.log("http://localhost:8000/party/" + id + '/users');
+            $.ajax({
+                url: ("http://localhost:8000/parties/party/" + id + '/users'),
+                type: "PUT",
+                xhrFields: {
+                    withCredentials: true
+                },
+                
+                success: function (data) {
+                    window.location.href = "/party/" + id;
+                },
+                error: function (data) {
+                    console.log(data);
+                    $('#login-plij').modal('show');
+                },
+    
+            });
+        }
+        function joinInvite() {
+            console.log(document.getElementById('invite-code').value);
+            if (document.getElementById('account-btn').classList.contains('disabled')) {
+                $.ajax({
+                    url: ("http://localhost:8000/parties/party/" + document.getElementById('invite-code').value + '/users'),
+                    type: "PUT",
+                    xhrFields: {
+                        withCredentials: true
+                    },
+                    
+                    success: function (data) {
+                        window.location.href = "/party/" + document.getElementById('invite-code').value;
+                    },
+                    error: function (data) {
+                        console.log(data);
+                        $('#bad-invite').modal('show');
+                    },
+        
+                });
+            } else {
+                $('#login-plij').modal('show');}
+        }
+        function createParty() {
+            console.log(document.getElementById('party-name').value);
+            console.log(document.getElementById('party-description').value);
+            $.ajax({
+                url: ("http://localhost:8000/parties/party"),
+                type: "POST",
+                xhrFields: {
+                    withCredentials: true
+                },
+                data: JSON.stringify({
+                    "party_name": document.getElementById('party-name').value,
+                    "party_description": document.getElementById('party-description').value,
+                    "type": document.getElementById('party-type').value
+                }),
+                contentType: "application/json",
+                success: function (data) {
+                    var toast =document.getElementById('creation-toast');
+                    var bstoast = new bootstrap.Toast(toast);
+                    bstoast.show();
+                    setTimeout(() => {
+                        window.location.href = "/party/" + data.id;
+                    }, 10000);
+                },
+                error: function (data) {
+                    console.log(data);
+                },
+    
+            });
+        }
+    </script>
+</head>
+<body class="justify-content-center">
+    <nav class="navbar navbar-expand-md bg-dark py-3 border rounded" data-bs-theme="dark">
+        <div class="container"><a class="navbar-brand d-flex align-items-center" href="/"><span class="bs-icon-sm bs-icon-rounded bs-icon-primary d-flex justify-content-center align-items-center me-2 bs-icon"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" fill="currentColor" viewBox="0 0 16 16" class="bi bi-bezier">
+                        <path fill-rule="evenodd" d="M0 10.5A1.5 1.5 0 0 1 1.5 9h1A1.5 1.5 0 0 1 4 10.5v1A1.5 1.5 0 0 1 2.5 13h-1A1.5 1.5 0 0 1 0 11.5zm1.5-.5a.5.5 0 0 0-.5.5v1a.5.5 0 0 0 .5.5h1a.5.5 0 0 0 .5-.5v-1a.5.5 0 0 0-.5-.5zm10.5.5A1.5 1.5 0 0 1 13.5 9h1a1.5 1.5 0 0 1 1.5 1.5v1a1.5 1.5 0 0 1-1.5 1.5h-1a1.5 1.5 0 0 1-1.5-1.5zm1.5-.5a.5.5 0 0 0-.5.5v1a.5.5 0 0 0 .5.5h1a.5.5 0 0 0 .5-.5v-1a.5.5 0 0 0-.5-.5zM6 4.5A1.5 1.5 0 0 1 7.5 3h1A1.5 1.5 0 0 1 10 4.5v1A1.5 1.5 0 0 1 8.5 7h-1A1.5 1.5 0 0 1 6 5.5zM7.5 4a.5.5 0 0 0-.5.5v1a.5.5 0 0 0 .5.5h1a.5.5 0 0 0 .5-.5v-1a.5.5 0 0 0-.5-.5z"></path>
+                        <path d="M6 4.5H1.866a1 1 0 1 0 0 1h2.668A6.517 6.517 0 0 0 1.814 9H2.5c.123 0 .244.015.358.043a5.517 5.517 0 0 1 3.185-3.185A1.503 1.503 0 0 1 6 5.5zm3.957 1.358A1.5 1.5 0 0 0 10 5.5v-1h4.134a1 1 0 1 1 0 1h-2.668a6.517 6.517 0 0 1 2.72 3.5H13.5c-.123 0-.243.015-.358.043a5.517 5.517 0 0 0-3.185-3.185z"></path>
+                    </svg></span><span>SpartyTime</span></a><button data-bs-toggle="collapse" class="navbar-toggler" data-bs-target="#navcol-5"><span class="visually-hidden">Toggle navigation</span><span class="navbar-toggler-icon"></span></button>
+            <div class="collapse navbar-collapse" id="navcol-5">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item"><a class="nav-link active" href="#">Home</a></li>
+                    <li class="nav-item"><a class="nav-link" href="#party">Party</a></li>
+                    <li class="nav-item"><a class="nav-link" href="#discover">Discover</a></li>
+                </ul>
+            </div><a class="btn btn-primary" id="account-btn" role="button" href="{{url_for('login')}}" style="background: rgb(144,238,144);color: rgb(0,0,0);">Login</a>
+        </div>
+    </nav>
+    <div id="party" class="justify-content-center mx-auto">
+        <section class="py-4 py-xl-5 mx-auto align-items-center justify-content-center" style="border-color: rgb(33,37,41);background: #212529;">
+            <div class="container rounded align-items-center" style="background: #2e3237;padding-top: 12px;padding-bottom: 12px;">
+                <div class="text-dark border rounded border-0 border-light d-flex flex-column justify-content-between align-items-center flex-lg-row p-4 p-lg-5" data-bs-theme="dark" style="background: rgb(33,37,41);">
+                    <div class="text-center text-lg-start py-3 py-lg-1">
+                        <h2 class="fw-bold mb-2" style="color: rgb(255,255,255);">Vibe with others</h2>
+                        
+                    </div>
+                    <div class="d-flex justify-content-center flex-wrap" >
+                        <div class="my-2" style="margin: 5px 5px;"><input class="form-control" type="text" id="invite-code" name="code" placeholder="Invite Code"></div>
+                    
+                        <div class="my-2"><button class="btn btn-primary ms-sm-2" type="submit" onclick="joinInvite()">Join</button><button class="btn btn-info ms-sm-2" style="--bs-warning: #000000;--bs-warning-rgb: 0,0,0;" data-bs-toggle="modal" data-bs-target="#create-party">Create</button></div>
+                    </div>
+                    </form>
+                </div>
+            </div>
+        </section>
+    </div>
+    <hr class="border border">
+    <div id="discover">
+        <section class="py-4 py-xl-5" style="background: #212529;margin-top: -20px;">
+            <h1 class="text-center py-3 border-primary" style="margin: 0px 0px 16px;border-color: var(--bs-primary);">Discover</h1>
+            <div class="container rounded" style="background: #2e3237;padding-top: 12px; padding-bottom: 12px">
+                {% for party in parties %}
+                    <div class="row py-2">
+                        <div class="col">
+                            <div class="text-dark border rounded border-0 border-light d-flex justify-content-between align-items-center flex-lg-row p-4 p-lg-5" data-bs-theme="dark" style="background: rgb(33,37,41);height: 100px;">
+                                <div class="text-center text-lg-start py-3 py-lg-1">
+                                    <h2 id="party-name-{{party.id}}" class="fw-bold mb-2" style="color: rgb(255,255,255);font-size: 18px;">{{party.party_info.party_name}}</h2>
+                                    <p id="party-description-{{party.id}}" class="mb-0" style="color: rgb(255,255,255);padding-top: 0px;font-size: 12px;">{{party.party_info.party_description}}</p>
+                                </div><img id="party-img-{{party.id}}" width="64" height="64" style="margin-right: -48px;padding-right: 0px;" src="{{party.party_data.current_song['album']['image']}}">
+                                <div class="flex-wrap" style="padding-left: 0px;margin-left: -294px;">
+                                    <h2 id="party-song-{{party.id}}" class="fw-bold mb-2" style="color: rgb(255,255,255);font-size: 18px;">{{party.party_data.current_song['name']}}</h2>
+                                    <p id="party-artist-{{party.id}}" class="mb-0" style="color: rgb(255,255,255);padding-top: 0px;font-size: 12px;margin-left: 17px;">{{party.party_data.current_song['artists'][0]['name']}}</p>
+                                </div>
+                                    <div class="my-2"><button id="{{party.id}}" class="btn btn-primary ms-sm-2" type="submit" onclick="joinParty(this.id)">Join</button><a id="{{party.id}}" class="btn ms-sm-2 btn-info" role="button" onclick="infoParty(this.id)">Info</a></div>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                {% endfor %}
+                
+            </div>
+        </section>
+    </div>
+    <div class="modal" id="login-plij" tabindex="-1">
+        <div class="modal-dialog">
+          <div class="modal-content">
+            <div class="modal-header">
+              <h5 class="modal-title">Unable to join party</h5>
+              <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+              <p>Please login before trying to join a party.</p>
+            </div>
+            <div class="modal-footer">
+              <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+          </div>
+        </div>
+      </div>      
+    <div class="modal" id="bad-invite" tabindex="-1">
+        <div class="modal-dialog">
+          <div class="modal-content">
+            <div class="modal-header">
+              <h5 class="modal-title">Unable to join party</h5>
+              <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+              <p>Party does not exist.</p>
+            </div>
+            <div class="modal-footer">
+              <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+          </div>
+        </div>
+      </div>     
+    <div class="modal" id="create-party" tabindex="-1">
+        <div class="modal-dialog">
+          <div class="modal-content">
+            <div class="modal-header">
+              <h5 class="modal-title">Create Party</h5>
+              <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <input class="form-control" type="text" id="party-name" name="party-name" placeholder="Party Name">
+                <br>
+                <input class="form-control" type="text" id="party-description" name="party-description" placeholder="Party Description">
+                <br>
+                <select class="form-select" aria-label="Default select example" id="party-type">
+                    <option value="public">Public</option>
+                    <option value="unlisted">Unlisted</option>
+                  </select>
+
+            </div>
+            <div class="modal-footer">
+              <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+              <button type="button" class="btn btn-primary" data-bs-dismiss="modal" onclick="createParty()">Create</button>
+            </div>
+          </div>
+        </div>
+      </div>  
+    <div class="toast top-0 end-0" role="alert" aria-live="assertive" aria-atomic="true" id="creation-toast">
+        <div class="toast-header">
+          <strong class="me-auto">Party Creation</strong>
+          <button type="button" class="btn-close" data-bs-dismiss="toast" aria-label="Close"></button>
+        </div>
+        <div class="toast-body">
+          Your party is being created... Please wait.
+        </div>
+    </div>     
+    <footer class="text-center bg-dark">
+        <div class="container text-white py-4 py-lg-5">
+            <ul class="list-inline">
+                <li class="list-inline-item me-4"><a class="link-light" href="https://github.com/SockYeh/SpartyTime/blob/main/README.md">About</a></li>
+                <li class="list-inline-item me-4"><a class="link-light" href="https://github.com/SockYeh/SpartyTime/">Source Code</a></li>
+                <li class="list-inline-item"><a class="link-light" href="https://github.com/SockYeh/SpartyTime/blob/main/LICENSE">License</a></li>
+            </ul>
+            
+            <p class="text-muted mb-0">Copyright © 2024 SpartyTime</p>
+        </div>
+    </footer>
+    <script src="{{ url_for('static', path='/bootstrap/js/bootstrap.min.js') }}"></script>
+    <script src="{{ url_for('static', path='/js/Button-Ripple-Effect-Animation-Wave-Pulse-button-ripple-effect.js') }}"></script>
+</body>
+
+</html>

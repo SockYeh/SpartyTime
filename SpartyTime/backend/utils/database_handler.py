@@ -115,7 +115,7 @@ class PartyInfoModel(pydantic.BaseModel):
     @pydantic.field_validator("type")
     @classmethod
     def check_type(cls, value):
-        if value not in ["public", "unlisted", "private"]:
+        if value not in ["public", "unlisted"]:
             raise ValueError(f"{value} is not a valid party type. ")
         return value
 
@@ -189,7 +189,7 @@ async def create_party_db() -> None:
                             "type": {
                                 "bsonType": "string",
                                 "description": "must be a string. Type of the party",
-                                "enum": ["public", "unlisted", "private"],
+                                "enum": ["public", "unlisted"],
                             },
                         },
                     },
@@ -282,6 +282,18 @@ async def update_user(user_id: str, user_data: dict) -> bool:
         await users_db.auth_details.update_one(
             {"_id": convert_to_bson_id(user_id)},
             {"$set": user_data},
+        )
+        return True
+    except Exception:
+        return False
+
+
+async def set_user_party(user_id: str, party_id: str) -> bool:
+    """Sets the current party of a user."""
+    try:
+        await users_db.auth_details.update_one(
+            {"_id": convert_to_bson_id(user_id)},
+            {"$set": {"current_party_id": party_id}},
         )
         return True
     except Exception:
@@ -383,3 +395,14 @@ async def aggregate_party(filter_dict: list) -> list:
     op = parties_db.party_details.aggregate(filter_dict)
     op = [switch_id_to_pydantic(i) async for i in op]
     return [PartyModel(**i) for i in op]
+
+
+async def get_party_user_pfps(party_id: str) -> list:
+    """Gets the profile pictures of all users in a party."""
+    party = await get_party_instance(party_id)
+    users = party.party_info.users + [party.party_info.owner]
+    user_pfps = []
+    for user in users:
+        user = await get_user_by_id(str(user))
+        user_pfps.append(user.spotify_data["images"][0]["url"])
+    return user_pfps

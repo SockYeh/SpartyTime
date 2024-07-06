@@ -37,7 +37,9 @@ async def login() -> RedirectResponse:
     )
 
 
-@router.get(f"/callback/")
+@router.get(
+    f"/callback",
+)
 async def callback(request: Request, code: str):
     """Callback API endpoint for spotify authentication"""
     auth_header = base64.b64encode(
@@ -76,12 +78,15 @@ async def callback(request: Request, code: str):
 
     request.session["user_id"] = str(user.id)
     await update_user_genre(str(user.id))
-    return resp
+    return RedirectResponse(
+        str(request.url_for("home")), status_code=status.HTTP_302_FOUND
+    )
 
 
-@router.get("/me")
-async def me(request: Request) -> dict:
+@router.get("/me", status_code=status.HTTP_200_OK, response_class=JSONResponse)
+async def me(request: Request):
     """API endpoint to get user data from currently authenticated Spotify user"""
+
     try:
         token = request.cookies.get("session")
         if token:
@@ -89,8 +94,15 @@ async def me(request: Request) -> dict:
             user = await get_user_by_id(user_id)
             access_token = user.spotify_session_data.access_token
             user_data = await get_spotify_details(access_token)
-            return user_data
+
+            return JSONResponse(content=user_data)
         else:
-            return {"error": "no session cookie found"}
+            return JSONResponse(
+                content={"error": "no session cookie found"},
+                status_code=status.HTTP_401_UNAUTHORIZED,
+            )
     except Exception:
-        return {"error": "invalid/expired token"}
+        return JSONResponse(
+            content={"error": "invalid/expired token"},
+            status_code=status.HTTP_401_UNAUTHORIZED,
+        )

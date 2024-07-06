@@ -8,7 +8,6 @@ from ..utils.session_manager import validate_session
 router = APIRouter(
     prefix="/discovery",
     tags=["discovery", "discover"],
-    dependencies=[Depends(validate_session)],
 )
 
 
@@ -18,7 +17,7 @@ async def convert_bsons_to_str(data: list) -> list:
         item.id = str(item.id)
         item.party_info.owner = str(item.party_info.owner)
         item.party_info.users = [str(user) for user in item.party_info.users]
-    return data
+    return [i.model_dump() for i in data]
 
 
 @router.get("/parties")
@@ -43,7 +42,10 @@ async def get_parties_by_genre(request: Request, genre: str) -> JSONResponse:
     )
 
 
-@router.get("/match-user")
+@router.get(
+    "/match-user",
+    dependencies=[Depends(validate_session)],
+)
 async def match_genres(request: Request) -> JSONResponse:
     """API endpoint to match user genres with party genres and return parties with highest intersection"""
     userid = request.session["user_id"]
@@ -55,6 +57,7 @@ async def match_genres(request: Request) -> JSONResponse:
                 "$match": {
                     "party_info.genres": {"$in": user_genres},
                     "party_info.users": {"$nin": [ObjectId(userid)]},
+                    "party_info.type": "public",
                 }
             },
             {

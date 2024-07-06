@@ -15,6 +15,7 @@ from ..utils.database_handler import (
     delete_party_instance,
     get_party_instance,
     update_party_instance,
+    set_user_party,
 )
 from ..utils.logger_handler import LoggerFormatter
 from ..utils.session_manager import validate_session
@@ -39,7 +40,7 @@ class Party(BaseModel):
     @pydantic.field_validator("type")
     @classmethod
     def check_type(cls, value):
-        if value not in ["public", "unlisted", "private"]:
+        if value not in ["public", "unlisted"]:
             raise ValueError(f"{value} is not a valid party type. ")
         return value
 
@@ -162,8 +163,45 @@ async def add_user_to_party(request: Request, party_id: str) -> None:
         )
 
     e = await update_party_instance(party_id, {"party_info.users": _id}, "$addToSet")
+    a = await set_user_party(userid, party_id)
     if not e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"Party update failed. {str(e)}",
+        )
+    if not a:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"User party update failed. {str(e)}",
+        )
+
+
+@router.delete("/party/{party_id}/users", status_code=status.HTTP_204_NO_CONTENT)
+async def remove_user_from_party(request: Request, party_id: str) -> None:
+    """API endpoint to remove a user from a party"""
+    try:
+        userid = request.session["user_id"]
+        _id = ObjectId(userid)
+    except InvalidId:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Invalid user id.",
+        )
+    party = await get_party_instance(party_id)
+    if not party:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail=f"Party not found."
+        )
+
+    e = await update_party_instance(party_id, {"party_info.users": _id}, "$pull")
+    a = await set_user_party(userid, "")
+    if not e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Party update failed. {str(e)}",
+        )
+    if not a:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"User party update failed. {str(e)}",
         )
